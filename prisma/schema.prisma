@@ -1,0 +1,89 @@
+// Prisma schema for taskflow
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  password     String
+  name         String
+  createdAt    DateTime      @default(now())
+  boards       BoardMember[]
+  cards        Card[]        @relation("assignee")
+  comments     Comment[]
+}
+
+model Board {
+  id        Int           @id @default(autoincrement())
+  name      String
+  createdAt DateTime      @default(now())
+  members   BoardMember[]
+  lists     List[]
+}
+
+model BoardMember {
+  userId    Int
+  boardId   Int
+  role      String        @default("member")  // "owner" | "member"
+  user      User          @relation(fields: [userId], references: [id])
+  board     Board         @relation(fields: [boardId], references: [id])
+
+  @@id([userId, boardId])
+}
+
+model List {
+  id        Int      @id @default(autoincrement())
+  name      String
+  position  Int
+  boardId   Int
+  board     Board    @relation(fields: [boardId], references: [id])
+  cards     Card[]
+}
+
+model Card {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  position    Int
+  dueDate     DateTime?
+  listId      Int
+  assigneeId  Int?
+  createdAt   DateTime  @default(now())
+  list        List      @relation(fields: [listId], references: [id])
+  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
+  comments    Comment[]
+  labels      CardLabel[]
+}
+
+model Label {
+  id    Int         @id @default(autoincrement())
+  name  String
+  color String
+  cards CardLabel[]
+}
+
+model CardLabel {
+  cardId  Int
+  labelId Int
+  card    Card  @relation(fields: [cardId], references: [id])
+  label   Label @relation(fields: [labelId], references: [id])
+
+  @@id([cardId, labelId])
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  cardId    Int
+  userId    Int
+  card      Card     @relation(fields: [cardId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
