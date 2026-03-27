@@ -16,15 +16,36 @@ curl -s -X POST http://localhost:3001/users/login \
   -d "{\"email\":\"alice@test.com\",\"password\":\"password123\"}" | jq .token
 ```
 
-## Your task
-Add an **Activity Feed** to this existing codebase.
+## Step 1 — Connect ForgeCraft to your AI assistant
 
-→ Read `README.md` → "Your Task: Activity Feed" for the full spec.
+Create `.vscode/mcp.json` in this folder:
+```json
+{
+  "servers": {
+    "forgecraft": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "forgecraft-mcp"]
+    }
+  }
+}
+```
+Open Copilot Chat → Agent mode → confirm `forgecraft` appears in the tools list.
 
-## How to work
-- Use the prompt cards in `PROMPT_CARDS.md`, in order
-- Before each prompt: write what you plan to change in `PROMPT_LOG.md`
-- Commit after each prompt: `git commit -m "prompt-N: description"`
+## Step 2 — Run project setup
+Tell your AI assistant:
+```
+I have an existing project at [paste your local path here].
+It is a Kanban board API. Use the forgecraft MCP tool to run setup_project on it.
+```
+After setup, let ForgeCraft run an audit — do not skip it.
+
+## Step 3 — Add the Activity Feed
+Once setup and audit are complete:
+```
+Implement the Activity Feed feature described in README.md.
+Follow the ForgeCraft workflow — check_cascade first, then TDD.
+```
 
 ## At the end (run these, note the results)
 ```bash
@@ -33,6 +54,6 @@ curl -s http://localhost:3001/boards/1/activity/preview | jq length
 ```
 
 Note down:
-- Which anti-patterns did you spot in the codebase?
-- Did the AI introduce any new ones?
-- How many prompt cards needed major edits?
+- Did the audit catch problems in the existing code?
+- Did the workflow feel slower or faster than usual?
+- What confused you most?
