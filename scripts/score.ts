@@ -224,6 +224,11 @@ function main(): void {
   const composable = { score: null as null, max: 3, details: 'Pending — scored via hidden live test after submission (clean architecture, DI, no unexpected coupling)' };
   const executable = { score: null as null, max: 3, details: 'Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)' };
 
+  const metrics = externalMetrics();
+  metrics.testCoverage = verifiable.coveragePct;
+  metrics.testCount = verifiable.testsPassed + verifiable.testsFailed;
+  metrics.depCount = Object.keys((pkg.dependencies ?? {}) as Record<string, string>).length;
+
   const result = {
     meta: {
       repo: pkg.name,
@@ -243,7 +248,7 @@ function main(): void {
       total_automated: { score: automatedScore, max: automatedMax },
       total_with_live_tests: { score: null, max: automatedMax + 6, details: 'Available after hidden live tests (Composable + Executable)' },
     },
-    external_metrics: externalMetrics(),
+    external_metrics: metrics,
   };
 
   writeFileSync(join(ROOT, 'score.json'), JSON.stringify(result, null, 2));
