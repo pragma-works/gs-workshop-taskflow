@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "24f56e4",
+    "commit": "4783fe4",
     "branch": "condition-b",
-    "timestamp": "2026-03-30T01:47:27.116Z",
+    "timestamp": "2026-03-30T15:45:19.837Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -39,7 +39,7 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 4/4 (100%) | ADR/decision doc: missing",
+      "details": "Conventional commits: 6/6 (100%) | ADR/decision doc: missing",
       "conventionalPct": 1,
       "hasAdr": false
     },
@@ -70,6 +70,9 @@
     "auditCritical": 0,
     "auditHigh": 0,
     "duplicatePct": 7.4,
-    "branchCount": 17
+    "branchCount": 17,
+    "testCoverage": null,
+    "testCount": 0,
+    "depCount": 4
   }
 }
