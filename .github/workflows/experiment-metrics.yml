@@ -1,5 +1,8 @@
 name: Experiment Metrics
-on: push
+on:
+  push:
+    branches:
+      - 'participant/**'
 
 jobs:
   score:
@@ -20,17 +23,8 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
-      - name: Setup database
-        run: npx prisma db push --skip-generate || true
-
       - name: Run GS scoring
         run: npm run score
-
-      - name: Upload score
-        uses: actions/upload-artifact@v4
-        with:
-          name: score
-          path: score.json
 
       - name: Commit score.json
         run: |
@@ -40,6 +34,13 @@ jobs:
           git diff --cached --quiet || git commit -m "chore(score): update score.json [skip ci]"
           git push
 
+      - name: Upload score artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: score
+          path: score.json
+
       - name: Print summary
         run: cat score.json
+
 
