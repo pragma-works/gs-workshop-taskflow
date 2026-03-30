@@ -1,0 +1,265 @@
+/**
+ * DX Experiment — GS Scoring Script (Taskflow / Brownfield variant)
+ * Produces score.json with GS property scores + external metrics.
+ * Run: npm run score
+ *
+ * Scoring rubric (8 pts automated, 6 pts via hidden live test = 14 pts total):
+ *   Self-describing  1pt  — README describes the feature built
+ *   Bounded          2pt  — Zero direct prisma.* calls in route files
+ *   Verifiable       2pt  — Tests pass (1pt) + coverage ≥ 60% on src (1pt)
+ *   Defended         1pt  — CI config present OR pre-commit hook present
+ *   Auditable        2pt  — ≥50% conventional commits (1pt) + ADR/decision doc (1pt)
+ *   Composable       3pt  — Scored externally via hidden live test (clean arch / DI / no coupling)
+ *   Executable       3pt  — Scored externally via hidden live test (server starts, contracts pass)
+ */
+
+import { execSync } from 'child_process';
+import { existsSync, readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { join, relative } from 'path';
+
+const ROOT = process.cwd();
+const SRC = join(ROOT, 'src');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Run a shell command, return stdout. Never throws — returns empty string on error. */
+function run(cmd: string): string {
+  try {
+    return execSync(cmd, { cwd: ROOT, stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim();
+  } catch (e: any) {
+    return e.stdout?.toString().trim() ?? '';
+  }
+}
+
+/** Recursively collect files matching a predicate. */
+function collectFiles(dir: string, predicate: (path: string) => boolean): string[] {
+  if (!existsSync(dir)) return [];
+  const results: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory() && entry !== 'node_modules' && entry !== 'dist') {
+      results.push(...collectFiles(full, predicate));
+    } else if (predicate(full)) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/** Count regex matches across an array of files. Returns [matchCount, fileList]. */
+function countMatches(files: string[], pattern: RegExp): [number, string[]] {
+  let count = 0;
+  const matched: string[] = [];
+  for (const file of files) {
+    const content = readFileSync(file, 'utf8');
+    const hits = content.match(pattern)?.length ?? 0;
+    if (hits > 0) { count += hits; matched.push(relative(ROOT, file)); }
+  }
+  return [count, matched];
+}
+
+// ─── Checks ──────────────────────────────────────────────────────────────────
+
+function checkSelfDescribing(): { score: number; max: number; details: string } {
+  const readme = join(ROOT, 'README.md');
+  if (!existsSync(readme)) return { score: 0, max: 1, details: 'README.md missing' };
+  const content = readFileSync(readme, 'utf8');
+  // Must have substantive content (> 300 chars) and mention something the participant built
+  const hasContent = content.length > 300;
+  if (!hasContent) return { score: 0, max: 1, details: `README too short (${content.length} chars)` };
+  return { score: 1, max: 1, details: `README present (${content.length} chars)` };
+}
+
+function checkBounded(): { score: number; max: number; details: string; violations: string[] } {
+  // Taskflow uses Prisma — participants should use a repository/service layer.
+  // Direct prisma calls in route files means the boundary is missing.
+  const routeFiles = collectFiles(SRC, f => f.endsWith('.ts') && !f.endsWith('.test.ts') && !f.endsWith('.spec.ts'));
+  const [count, violations] = countMatches(routeFiles, /\bprisma\b/g);
+  if (count === 0) return { score: 2, max: 2, details: 'No direct DB calls in source files', violations: [] };
+  if (count <= 3) return { score: 1, max: 2, details: `${count} direct DB call(s) found`, violations };
+  return { score: 0, max: 2, details: `${count} direct DB calls found — repository layer missing`, violations };
+}
+
+function checkVerifiable(): { score: number; max: number; details: string; testsPassed: number; testsFailed: number; coveragePct: number | null } {
+  // Run tests
+  const testOutput = run('npx vitest run --reporter=json --outputFile=.score-test-report.json');
+  let testsPassed = 0;
+  let testsFailed = 0;
+  let coveragePct: number | null = null;
+
+  const reportPath = join(ROOT, '.score-test-report.json');
+  if (existsSync(reportPath)) {
+    try {
+      const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+      testsPassed = report.numPassedTests ?? 0;
+      testsFailed = report.numFailedTests ?? 0;
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Run coverage
+  const coverageOutput = run('npx vitest run --coverage --coverage.reporter=json --coverage.reportsDirectory=.score-coverage');
+  const coverageSummaryPath = join(ROOT, '.score-coverage', 'coverage-summary.json');
+  if (existsSync(coverageSummaryPath)) {
+    try {
+      const summary = JSON.parse(readFileSync(coverageSummaryPath, 'utf8'));
+      coveragePct = summary.total?.lines?.pct ?? null;
+    } catch { /* ignore */ }
+  }
+
+  const testsPass = testsFailed === 0 && testsPassed > 0;
+  const coveragePass = coveragePct !== null && coveragePct >= 60;
+
+  const score = (testsPass ? 1 : 0) + (coveragePass ? 1 : 0);
+  const details = [
+    `Tests: ${testsPassed} passed, ${testsFailed} failed`,
+    coveragePct !== null ? `Coverage: ${coveragePct.toFixed(1)}%` : 'Coverage: not measured',
+  ].join(' | ');
+
+  return { score, max: 2, details, testsPassed, testsFailed, coveragePct };
+}
+
+function checkDefended(): { score: number; max: number; details: string } {
+  const hasCi = existsSync(join(ROOT, '.github', 'workflows'));
+  const hasPreCommit = existsSync(join(ROOT, '.husky', 'pre-commit')) ||
+                       existsSync(join(ROOT, '.git', 'hooks', 'pre-commit'));
+  if (hasCi || hasPreCommit) {
+    const sources = [hasCi && 'CI workflow', hasPreCommit && 'pre-commit hook'].filter(Boolean).join(', ');
+    return { score: 1, max: 1, details: `Structural guard present: ${sources}` };
+  }
+  return { score: 0, max: 1, details: 'No CI config or pre-commit hook found' };
+}
+
+function checkAuditable(): { score: number; max: number; details: string; conventionalPct: number; hasAdr: boolean } {
+  // Conventional commits
+  const logOutput = run('git log --oneline');
+  const lines = logOutput.split('\n').filter(Boolean);
+  const totalCommits = lines.length;
+  const conventionalPattern = /^[a-f0-9]+ (feat|fix|refactor|test|chore|docs|style|perf|ci|build)(\(.+\))?:/;
+  const conventionalCount = lines.filter(l => conventionalPattern.test(l)).length;
+  const conventionalPct = totalCommits > 0 ? (conventionalCount / totalCommits) : 0;
+
+  // ADR or decision doc
+  const hasAdr = existsSync(join(ROOT, 'docs', 'adr')) ||
+                 existsSync(join(ROOT, 'docs', 'decisions')) ||
+                 collectFiles(ROOT, f => /adr|decision/i.test(f) && f.endsWith('.md') && !f.includes('node_modules')).length > 0;
+
+  const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasAdr ? 1 : 0);
+  const details = [
+    `Conventional commits: ${conventionalCount}/${totalCommits} (${(conventionalPct * 100).toFixed(0)}%)`,
+    `ADR/decision doc: ${hasAdr ? 'present' : 'missing'}`,
+  ].join(' | ');
+
+  return { score, max: 2, details, conventionalPct, hasAdr };
+}
+
+// ─── External Metrics ────────────────────────────────────────────────────────
+
+function externalMetrics(): Record<string, unknown> {
+  // TypeScript errors
+  const tscOutput = run('npx tsc --noEmit 2>&1');
+  const tscErrors = (tscOutput.match(/error TS/g) ?? []).length;
+
+  // ESLint
+  let eslintErrors = 0;
+  let eslintWarnings = 0;
+  const eslintJson = run(`npx eslint "src/**/*.ts" --format json`);
+  try {
+    const eslintReport = JSON.parse(eslintJson);
+    for (const file of eslintReport) {
+      eslintErrors += file.errorCount ?? 0;
+      eslintWarnings += file.warningCount ?? 0;
+    }
+  } catch { /* not installed or no files */ }
+
+  // npm audit
+  let auditCritical = 0;
+  let auditHigh = 0;
+  const auditJson = run('npm audit --json');
+  try {
+    const audit = JSON.parse(auditJson);
+    auditCritical = audit.metadata?.vulnerabilities?.critical ?? 0;
+    auditHigh = audit.metadata?.vulnerabilities?.high ?? 0;
+  } catch { /* ignore */ }
+
+  // Duplicate code (Bounded proxy) — using jscpd if available
+  let duplicatePct: number | null = null;
+  const jscpdOut = run('npx jscpd src --min-lines 5 --reporters json --output .score-jscpd 2>/dev/null');
+  const jscpdReport = join(ROOT, '.score-jscpd', 'jscpd-report.json');
+  if (existsSync(jscpdReport)) {
+    try {
+      const jscpd = JSON.parse(readFileSync(jscpdReport, 'utf8'));
+      duplicatePct = jscpd.statistics?.total?.percentage ?? null;
+    } catch { /* ignore */ }
+  }
+
+  // Cyclomatic complexity — count branches as a proxy
+  const srcFiles = collectFiles(SRC, f => f.endsWith('.ts') && !f.endsWith('.test.ts'));
+  let branchCount = 0;
+  for (const file of srcFiles) {
+    const content = readFileSync(file, 'utf8');
+    branchCount += (content.match(/\bif\b|\belse\b|\bfor\b|\bwhile\b|\bswitch\b|\bcase\b|\?\?|\?\./g) ?? []).length;
+  }
+
+  return { tscErrors, eslintErrors, eslintWarnings, auditCritical, auditHigh, duplicatePct, branchCount };
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+function main(): void {
+  console.log('Running GS scoring...\n');
+
+  const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+  const commit = run('git rev-parse --short HEAD');
+  const branch = run('git branch --show-current');
+
+  const selfDescribing = checkSelfDescribing();
+  const bounded = checkBounded();
+  const verifiable = checkVerifiable();
+  const defended = checkDefended();
+  const auditable = checkAuditable();
+
+  const automatedScore = selfDescribing.score + bounded.score + verifiable.score + defended.score + auditable.score;
+  const automatedMax = selfDescribing.max + bounded.max + verifiable.max + defended.max + auditable.max;
+
+  const composable = { score: null as null, max: 3, details: 'Pending — scored via hidden live test after submission (clean architecture, DI, no unexpected coupling)' };
+  const executable = { score: null as null, max: 3, details: 'Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)' };
+
+  const result = {
+    meta: {
+      repo: pkg.name,
+      commit,
+      branch,
+      timestamp: new Date().toISOString(),
+      scorer_version: '1.0.0',
+    },
+    gs_scores: {
+      self_describing: selfDescribing,
+      bounded: bounded,
+      verifiable: verifiable,
+      defended: defended,
+      auditable: auditable,
+      composable,
+      executable,
+      total_automated: { score: automatedScore, max: automatedMax },
+      total_with_live_tests: { score: null, max: automatedMax + 6, details: 'Available after hidden live tests (Composable + Executable)' },
+    },
+    external_metrics: externalMetrics(),
+  };
+
+  writeFileSync(join(ROOT, 'score.json'), JSON.stringify(result, null, 2));
+
+  // Print summary
+  console.log('── GS Score ─────────────────────────────');
+  console.log(`Self-describing  ${selfDescribing.score}/${selfDescribing.max}  ${selfDescribing.details}`);
+  console.log(`Bounded          ${bounded.score}/${bounded.max}  ${bounded.details}`);
+  console.log(`Verifiable       ${verifiable.score}/${verifiable.max}  ${verifiable.details}`);
+  console.log(`Defended         ${defended.score}/${defended.max}  ${defended.details}`);
+  console.log(`Auditable        ${auditable.score}/${auditable.max}  ${auditable.details}`);
+  console.log(`Composable       ?/3   Pending live test (clean arch / DI)`);
+  console.log(`Executable       ?/3   Pending live test (API behavioral contracts)`);
+  console.log(`─────────────────────────────────────────`);
+  console.log(`Automated total  ${automatedScore}/${automatedMax}  (14 total with live tests)`);
+  console.log('\nscore.json written.\n');
+}
+
+main();

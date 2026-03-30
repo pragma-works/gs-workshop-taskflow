@@ -1,0 +1,45 @@
+name: Experiment Metrics
+on: push
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./dev.db
+      JWT_SECRET: test-secret-for-ci
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci --ignore-scripts
+
+      - name: Setup database
+        run: npx prisma db push --skip-generate || true
+
+      - name: Run GS scoring
+        run: npm run score
+
+      - name: Upload score
+        uses: actions/upload-artifact@v4
+        with:
+          name: score
+          path: score.json
+
+      - name: Commit score.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add score.json
+          git diff --cached --quiet || git commit -m "chore(score): update score.json [skip ci]"
+          git push
+
+      - name: Print summary
+        run: cat score.json
+
