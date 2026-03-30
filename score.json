@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "repo": "taskflow",
+    "commit": "24f56e4",
+    "branch": "condition-b",
+    "timestamp": "2026-03-30T01:47:27.116Z",
+    "scorer_version": "1.0.0"
+  },
+  "gs_scores": {
+    "self_describing": {
+      "score": 1,
+      "max": 1,
+      "details": "README present (3675 chars)"
+    },
+    "bounded": {
+      "score": 0,
+      "max": 2,
+      "details": "31 direct DB calls found — repository layer missing",
+      "violations": [
+        "src/db.ts",
+        "src/routes/boards.ts",
+        "src/routes/cards.ts",
+        "src/routes/users.ts"
+      ]
+    },
+    "verifiable": {
+      "score": 0,
+      "max": 2,
+      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
+      "testsPassed": 0,
+      "testsFailed": 0,
+      "coveragePct": null
+    },
+    "defended": {
+      "score": 1,
+      "max": 1,
+      "details": "Structural guard present: CI workflow"
+    },
+    "auditable": {
+      "score": 1,
+      "max": 2,
+      "details": "Conventional commits: 4/4 (100%) | ADR/decision doc: missing",
+      "conventionalPct": 1,
+      "hasAdr": false
+    },
+    "composable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (clean architecture, DI, no unexpected coupling)"
+    },
+    "executable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
+    },
+    "total_automated": {
+      "score": 3,
+      "max": 8
+    },
+    "total_with_live_tests": {
+      "score": null,
+      "max": 14,
+      "details": "Available after hidden live tests (Composable + Executable)"
+    }
+  },
+  "external_metrics": {
+    "tscErrors": 1,
+    "eslintErrors": 0,
+    "eslintWarnings": 0,
+    "auditCritical": 0,
+    "auditHigh": 0,
+    "duplicatePct": 7.4,
+    "branchCount": 17
+  }
+}
