@@ -25,7 +25,7 @@ Create `.vscode/mcp.json` in this folder:
     "forgecraft": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "forgecraft-mcp"]
+      "args": ["-y", "forgecraft-mcp@1.1.0"]
     }
   }
 }
@@ -57,3 +57,4 @@ Note down:
 - Did the audit catch problems in the existing code?
 - Did the workflow feel slower or faster than usual?
 - What confused you most?
+
