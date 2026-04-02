@@ -25,7 +25,7 @@ Create `.vscode/mcp.json` in this folder:
     "forgecraft": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "forgecraft-mcp@1.1.0"]
+      "args": ["-y", "forgecraft-mcp@1.3.2"]
     }
   }
 }
