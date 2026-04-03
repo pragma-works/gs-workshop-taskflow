@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "c811096",
-    "branch": "condition-a",
-    "timestamp": "2026-03-30T15:45:14.980Z",
+    "commit": "dca1cd1",
+    "branch": "participant/P000-taskflow-a",
+    "timestamp": "2026-04-03T00:55:24.627Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,9 +15,9 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "31 direct DB calls found — repository layer missing",
+      "details": "34 direct DB calls found — repository layer missing",
       "violations": [
-        "src/db.ts",
+        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts"
@@ -39,7 +39,7 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 5/5 (100%) | ADR/decision doc: missing",
+      "details": "Conventional commits: 10/10 (100%) | ADR/decision doc: missing",
       "conventionalPct": 1,
       "hasAdr": false
     },
@@ -64,13 +64,13 @@
     }
   },
   "external_metrics": {
-    "tscErrors": 1,
+    "tscErrors": 0,
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 0,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
+    "duplicatePct": 9.79,
+    "branchCount": 21,
     "testCoverage": null,
     "testCount": 0,
     "depCount": 4
