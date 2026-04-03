@@ -70,23 +70,40 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
   const cardId = parseInt(req.params.id)
   const { targetListId, position } = req.body
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } })
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    include: { list: { include: { board: true } } },
+  })
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
   }
 
-  // ANTI-PATTERN: no ownership/membership check before moving
+  const targetList = await prisma.list.findUnique({ where: { id: targetListId } })
+  if (!targetList) {
+    res.status(404).json({ error: 'Target list not found' })
+    return
+  }
 
-  const fromListId = card.listId
+  const fromListName = card.list.name
+  const toListName = targetList.name
+  const boardId = card.list.boardId
 
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
-
-  // Log the move — in a separate write, outside any transaction
-  // (This is also where participants discover the desync risk)
-  console.log(`Card ${cardId} moved from list ${fromListId} to ${targetListId} by user ${userId}`)
+  // Atomic: move card + log activity in a single transaction
+  await prisma.$transaction([
+    prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } }),
+    prisma.activityEvent.create({
+      data: {
+        boardId,
+        actorId: userId,
+        eventType: 'card_moved',
+        cardId,
+        cardTitle: card.title,
+        fromListName,
+        toListName,
+      },
+    }),
+  ])
 
   res.json({ ok: true })
 })
