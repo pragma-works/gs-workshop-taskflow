@@ -87,3 +87,13 @@ model Comment {
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
 }
+
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int?
+  userId    Int
+  type      String   // e.g. "card_moved"
+  payload   String   // JSON-encoded event detail
+  createdAt DateTime @default(now())
+}
