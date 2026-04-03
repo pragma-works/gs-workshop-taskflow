@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "4783fe4",
-    "branch": "condition-b",
-    "timestamp": "2026-03-30T15:45:19.837Z",
+    "commit": "30238ad",
+    "branch": "participant/P000-taskflow-b",
+    "timestamp": "2026-04-03T00:59:26.625Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,21 +15,22 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "31 direct DB calls found — repository layer missing",
+      "details": "36 direct DB calls found — repository layer missing",
       "violations": [
-        "src/db.ts",
+        "src/modules/activity/activityService.ts",
+        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts"
       ]
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
-      "testsPassed": 0,
+      "details": "Tests: 20 passed, 0 failed | Coverage: 26.1%",
+      "testsPassed": 20,
       "testsFailed": 0,
-      "coveragePct": null
+      "coveragePct": 26.05
     },
     "defended": {
       "score": 1,
@@ -39,7 +40,7 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 6/6 (100%) | ADR/decision doc: missing",
+      "details": "Conventional commits: 17/17 (100%) | ADR/decision doc: missing",
       "conventionalPct": 1,
       "hasAdr": false
     },
@@ -54,7 +55,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 3,
+      "score": 4,
       "max": 8
     },
     "total_with_live_tests": {
@@ -64,15 +65,15 @@
     }
   },
   "external_metrics": {
-    "tscErrors": 1,
+    "tscErrors": 0,
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 0,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
-    "testCoverage": null,
-    "testCount": 0,
+    "duplicatePct": 5.99,
+    "branchCount": 25,
+    "testCoverage": 26.05,
+    "testCount": 20,
     "depCount": 4
   }
 }
