@@ -52,7 +52,7 @@ Full details in `README.md` → "Your Task: Activity Feed".
 | **Composable** | 3 | HTTP layer translates only — business logic never leaks into routes *(hidden live test)* |
 | **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
 | **Bounded** | 2 | Zero direct `prisma\.\*` calls in route files — persistence behind a repository layer |
-| **Auditable** | 2 | ≥50% conventional commits (1pt) + at least one ADR or decision doc (1pt) |
+| **Auditable** | 2 | ≥50% conventional commits (1pt) + at least one decision log entry (1pt) |
 | **Self-describing** | 1 | README describes what you built |
 | **Defended** | 1 | Zero TypeScript errors — type contracts intact |
 | **Total** | **14** | 8 pts automated on push · 6 pts revealed after submission |
