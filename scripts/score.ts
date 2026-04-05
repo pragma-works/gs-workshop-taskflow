@@ -144,10 +144,14 @@ function checkAuditable(): { score: number; max: number; details: string; conven
   const conventionalCount = lines.filter(l => conventionalPattern.test(l)).length;
   const conventionalPct = totalCommits > 0 ? (conventionalCount / totalCommits) : 0;
 
-  // ADR or decision doc
-  const hasAdr = existsSync(join(ROOT, 'docs', 'adr')) ||
-                 existsSync(join(ROOT, 'docs', 'decisions')) ||
-                 collectFiles(ROOT, f => /adr|decision/i.test(f) && f.endsWith('.md') && !f.includes('node_modules')).length > 0;
+  // Decision log: doc recording a design choice
+  const hasDecisionLog =
+    existsSync(join(ROOT, 'docs', 'adr')) ||
+    existsSync(join(ROOT, 'docs', 'decisions')) ||
+    collectFiles(ROOT, f =>
+      /\b(adr|decision|design-log|design-notes|rationale|choices)\b/i.test(f) &&
+      f.endsWith('.md') && !f.includes('node_modules')
+    ).length > 0;
 
   const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasDecisionLog ? 1 : 0);
   const details = [
