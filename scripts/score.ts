@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DX Experiment — GS Scoring Script (Taskflow / Brownfield variant)
  * Produces score.json with GS property scores + external metrics.
  * Run: npm run score
@@ -8,7 +8,7 @@
  *   Bounded          2pt  — Zero direct prisma.* calls in route files
  *   Verifiable       2pt  — Tests pass (1pt) + coverage ≥ 60% on src (1pt)
  *   Defended         1pt  — CI config present OR pre-commit hook present
- *   Auditable        2pt  — ≥50% conventional commits (1pt) + ADR/decision doc (1pt)
+ *   Auditable        2pt  — ≥50% conventional commits (1pt) + decision log (1pt)
  *   Composable       3pt  — Scored externally via hidden live test (clean arch / DI / no coupling)
  *   Executable       3pt  — Scored externally via hidden live test (server starts, contracts pass)
  */
@@ -135,7 +135,7 @@ function checkDefended(): { score: number; max: number; details: string } {
   return { score: 0, max: 1, details: 'No CI config or pre-commit hook found' };
 }
 
-function checkAuditable(): { score: number; max: number; details: string; conventionalPct: number; hasAdr: boolean } {
+function checkAuditable(): { score: number; max: number; details: string; conventionalPct: number; hasDecisionLog: boolean } {
   // Conventional commits
   const logOutput = run('git log --oneline');
   const lines = logOutput.split('\n').filter(Boolean);
@@ -144,18 +144,22 @@ function checkAuditable(): { score: number; max: number; details: string; conven
   const conventionalCount = lines.filter(l => conventionalPattern.test(l)).length;
   const conventionalPct = totalCommits > 0 ? (conventionalCount / totalCommits) : 0;
 
-  // ADR or decision doc
-  const hasAdr = existsSync(join(ROOT, 'docs', 'adr')) ||
-                 existsSync(join(ROOT, 'docs', 'decisions')) ||
-                 collectFiles(ROOT, f => /adr|decision/i.test(f) && f.endsWith('.md') && !f.includes('node_modules')).length > 0;
+  // Decision log: any doc recording a design choice and reasoning
+  const hasDecisionLog =
+    existsSync(join(ROOT, 'docs', 'adr')) ||
+    existsSync(join(ROOT, 'docs', 'decisions')) ||
+    collectFiles(ROOT, f =>
+      /\b(adr|decision|design-log|design-notes|rationale|choices)\b/i.test(path.basename(f)) &&
+      f.endsWith('.md') && !f.includes('node_modules')
+    ).length > 0;
 
-  const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasAdr ? 1 : 0);
+  const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasDecisionLog ? 1 : 0);
   const details = [
     `Conventional commits: ${conventionalCount}/${totalCommits} (${(conventionalPct * 100).toFixed(0)}%)`,
-    `ADR/decision doc: ${hasAdr ? 'present' : 'missing'}`,
+    `Decision log: ${hasDecisionLog ? 'present' : 'missing — add a doc recording one design choice you made and why'}`,
   ].join(' | ');
 
-  return { score, max: 2, details, conventionalPct, hasAdr };
+  return { score, max: 2, details, conventionalPct, hasDecisionLog };
 }
 
 // ─── External Metrics ────────────────────────────────────────────────────────

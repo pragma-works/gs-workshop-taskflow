@@ -1,5 +1,5 @@
 ﻿# Workshop — Taskflow Group A (Prompt Cards)
-**Mode:** Use the provided prompt cards in order. Log what you changed.
+**Mode:** Free prompting — you have a PM ticket. Use your AI however you like.
 
 ## Setup (do this first)
 
@@ -31,22 +31,56 @@ curl -s -X POST http://localhost:3001/users/login \
 
 You should receive a JSON response with a `token` field. Save it for authenticated requests.
 
-## Known Issues in This Scaffold
-These are intentional. You don't have to fix all of them — but the scoring rewards fixing them.
+## Your Ticket (PM-5214): Activity Feed
 
-- Direct Prisma calls in route files (6 instances)
-- Missing error middleware
-- No request validation on inputs
-- Hardcoded JWT secret (check src/middleware/auth.ts)
-- Missing atomic transaction on task status change + activity log
-- N+1 query pattern on board load
-- No ownership check before comment operations
+Your product manager wrote this:
 
-## Your Goal
-Add an **Activity Feed** to this existing (deliberately flawed) codebase.
-Full details in `README.md` → "Your Task: Activity Feed".
+---
 
-## Success Criteria (8 pts automated + 6 pts hidden live tests = 14 pts total)
+Add an **Activity Feed** to the Kanban board. Users should be able to see what happened on a board.
+
+**New endpoints:**
+
+`GET /boards/:id/activity`
+- Returns all activity events for the board, newest first
+- Response: `{ events: [{ id, boardId, cardId?, userId, action, meta?, createdAt }] }`
+- 401 if unauthenticated · 403 if not a board member · 404 if board not found
+
+`GET /boards/:id/activity/preview` *(no auth required — for smoke testing)*
+- Same shape, limited to last 10 events
+
+**Changes to existing endpoints:**
+
+`POST /cards/:id/move` (already exists in `src/routes/cards.ts`)
+- Must atomically write an ActivityEvent (`action: "card_moved"`) together with the card status change
+- If the event write fails, the card move must roll back
+- Auth: 401 · 403 · 404 as above
+
+`POST /cards/:id/comments` (already exists in `src/routes/cards.ts`)
+- Must write an ActivityEvent (`action: "comment_added"`)
+
+**Technical debt to address as part of this ticket:**
+
+| File | Line(s) | Issue |
+|------|---------|-------|
+| `src/routes/boards.ts` | 23, 41 | Direct `prisma.*` calls in route handler — move persistence to a repository |
+| `src/routes/cards.ts` | 18, 67 | Same |
+| `src/routes/users.ts` | 31 | Same |
+| `src/middleware/auth.ts` | 12 | `JWT_SECRET = "hardcoded-secret"` — must read from `process.env.JWT_SECRET` |
+| `src/routes/boards.ts` | 41 | N+1 query on board load — replace with a JOIN |
+| `src/routes/cards.ts` | 67 | Missing transaction — wrap status change + activity write in `prisma.$transaction` |
+
+**Definition of done:**
+- [ ] All new endpoints return correct status codes
+- [ ] Activity events written atomically with the operations that trigger them
+- [ ] No direct `prisma.*` calls in your new files
+- [ ] `JWT_SECRET` read from environment variable
+- [ ] Tests cover the new endpoints
+- [ ] README updated with an Activity Feed section
+
+---
+
+## Success Criteria## Success Criteria (8 pts automated + 6 pts hidden live tests = 14 pts total)
 
 | Property | Pts | What earns it |
 |----------|-----|---------------|
@@ -54,7 +88,7 @@ Full details in `README.md` → "Your Task: Activity Feed".
 | **Composable** | 3 | HTTP layer translates only — business logic never leaks into routes *(hidden live test)* |
 | **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
 | **Bounded** | 2 | Zero direct `prisma.*` calls in route files — persistence behind a repository layer |
-| **Auditable** | 2 | ≥50% conventional commits (1pt) + at least one ADR or decision doc (1pt) |
+| **Auditable** | 2 | ≥50% conventional commits (1pt) + one decision log entry: document a design choice you made and why (1pt) |
 | **Self-describing** | 1 | README describes what you built |
 | **Defended** | 1 | Zero TypeScript errors — type contracts intact |
 | **Total** | **14** | 8 pts automated on push · 6 pts revealed after submission |
