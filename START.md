@@ -1,4 +1,4 @@
-# Workshop — Taskflow Group B (ForgeCraft GS)
+﻿# Workshop — Taskflow Group B (ForgeCraft GS)
 **Mode:** ForgeCraft on an existing codebase. Brownfield flow.
 
 ## Setup (do this first)
@@ -45,13 +45,17 @@ Add an **Activity Feed** to this existing (deliberately flawed) codebase, using 
 Full details in `README.md` → "Your Task: Activity Feed".
 
 ## Success Criteria (8 pts automated + 6 pts hidden live tests = 14 pts total)
-- **Verifiable** (2 pts): All tests pass + ≥60% coverage on your new feature files
-- **Bounded** (2 pts): Zero direct `prisma.*` calls in new route files
-- **Self-describing** (1 pt): README describes what you built
-- **Auditable** (1 pt): At least one ADR or decision doc for a meaningful architectural choice
-- **Auditable** (1 pt): ≥50% of your commits follow conventional format (feat:, fix:, chore:, etc.)
-- **Composable** (3 pts): Clean architecture — no leaking concerns, proper layering *(hidden live test, revealed after submission)*
-- **Executable** (3 pts): API behavioral contracts pass — correct status codes, response shapes *(hidden live test, revealed after submission)*
+
+| Property | Pts | What earns it |
+|----------|-----|---------------|
+| **Executable** | 3 | API contracts pass: correct HTTP status codes, response shapes *(hidden live test)* |
+| **Composable** | 3 | HTTP layer translates only — business logic never leaks into routes *(hidden live test)* |
+| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
+| **Bounded** | 2 | Zero direct `prisma\.\*` calls in route files — persistence behind a repository layer |
+| **Auditable** | 2 | ≥50% conventional commits (1pt) + at least one ADR or decision doc (1pt) |
+| **Self-describing** | 1 | README describes what you built |
+| **Defended** | 1 | Zero TypeScript errors — type contracts intact |
+| **Total** | **14** | 8 pts automated on push · 6 pts revealed after submission |
 
 ## Step 1 — Add ForgeCraft to your AI assistant
 In VS Code with GitHub Copilot, create `.vscode/mcp.json` in this folder:
