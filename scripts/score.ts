@@ -135,7 +135,7 @@ function checkDefended(): { score: number; max: number; details: string } {
   return { score: 0, max: 1, details: 'No CI config or pre-commit hook found' };
 }
 
-function checkAuditable(): { score: number; max: number; details: string; conventionalPct: number; hasAdr: boolean } {
+function checkAuditable(): { score: number; max: number; details: string; conventionalPct: number; hasDecisionLog: boolean } {
   // Conventional commits
   const logOutput = run('git log --oneline');
   const lines = logOutput.split('\n').filter(Boolean);
@@ -149,13 +149,13 @@ function checkAuditable(): { score: number; max: number; details: string; conven
                  existsSync(join(ROOT, 'docs', 'decisions')) ||
                  collectFiles(ROOT, f => /adr|decision/i.test(f) && f.endsWith('.md') && !f.includes('node_modules')).length > 0;
 
-  const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasAdr ? 1 : 0);
+  const score = (conventionalPct >= 0.5 ? 1 : 0) + (hasDecisionLog ? 1 : 0);
   const details = [
     `Conventional commits: ${conventionalCount}/${totalCommits} (${(conventionalPct * 100).toFixed(0)}%)`,
-    `ADR/decision doc: ${hasAdr ? 'present' : 'missing'}`,
+    `ADR/decision doc: ${hasDecisionLog ? 'present' : 'missing'}`,
   ].join(' | ');
 
-  return { score, max: 2, details, conventionalPct, hasAdr };
+  return { score, max: 2, details, conventionalPct, hasDecisionLog };
 }
 
 // ─── External Metrics ────────────────────────────────────────────────────────
