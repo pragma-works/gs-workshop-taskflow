@@ -161,6 +161,34 @@ function checkAuditable(): { score: number; max: number; details: string; conven
 
   return { score, max: 2, details, conventionalPct, hasDecisionLog };
 }
+// --- Participant Intake ----------------------------------------------------------
+
+function checkIntake(): {
+  status: 'complete' | 'consent_pending' | 'missing';
+  consented: boolean;
+  q1: string | null;
+  q2: string | null;
+  q3: string | null;
+} {
+  const intakePath = join(ROOT, 'INTAKE.md');
+  if (!existsSync(intakePath)) return { status: 'missing', consented: false, q1: null, q2: null, q3: null };
+
+  const content = readFileSync(intakePath, 'utf8');
+  const consented = /- \[x\] I consent/i.test(content);
+
+  const sections = content.split(/\*\*Q\d/);
+  const extractAnswer = (section: string): string | null => {
+    const m = section.match(/Answer:\s*([^\n]+)/);
+    const val = m?.[1]?.replace(/<!--.*?-->/g, '').trim() ?? null;
+    return val && val.length > 0 ? val : null;
+  };
+
+  const q1 = sections[1] ? extractAnswer(sections[1]) : null;
+  const q2 = sections[2] ? extractAnswer(sections[2]) : null;
+  const q3 = sections[3] ? extractAnswer(sections[3]) : null;
+  const status = consented && q1 && q2 && q3 ? 'complete' : 'consent_pending';
+  return { status, consented, q1, q2, q3 };
+}
 
 // ─── External Metrics ────────────────────────────────────────────────────────
 
@@ -227,6 +255,7 @@ function main(): void {
   const verifiable = checkVerifiable();
   const defended = checkDefended();
   const auditable = checkAuditable();
+  const intake = checkIntake();
 
   const automatedScore = selfDescribing.score + bounded.score + verifiable.score + defended.score + auditable.score;
   const automatedMax = selfDescribing.max + bounded.max + verifiable.max + defended.max + auditable.max;
@@ -258,6 +287,7 @@ function main(): void {
       total_automated: { score: automatedScore, max: automatedMax },
       total_with_live_tests: { score: null, max: automatedMax + 6, details: 'Available after hidden live tests (Composable + Executable)' },
     },
+    intake: intake,
     external_metrics: metrics,
   };
 
