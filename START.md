@@ -1,14 +1,14 @@
-﻿# Workshop — Taskflow Group A (Prompt Cards)
-**Mode:** Free prompting — you have a PM ticket. Use your AI however you like.
+# Workshop — Taskflow Group B (ForgeCraft)
+**Mode:** ForgeCraft on an existing codebase. Brownfield flow.
 
-## Setup (do this first)
+## Setup
 
 The facilitator will give you your participant number (e.g. **P007**).
 
 ```bash
 git clone https://github.com/pragma-works/gs-workshop-taskflow
 cd gs-workshop-taskflow
-git checkout condition-a
+git checkout condition-b
 git checkout -b participant/P007    # replace P007 with your number
 cp .env.example .env          # Mac/Linux
 copy .env.example .env        # Windows
@@ -22,22 +22,18 @@ Start the server in a dedicated terminal:
 npm run dev                   # starts on http://localhost:3001
 ```
 
-Verify it works — open a second terminal and get a token:
+Verify it works — in a second terminal:
 ```bash
 curl -s -X POST http://localhost:3001/users/login \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"alice@test.com\",\"password\":\"password123\"}" | jq .token
+  -d "{\"email\":\"alice@test.com\",\"password\":\"password123\"}"
 ```
 
-You should receive a JSON response with a `token` field. Save it for authenticated requests.
+You should see JSON with a `token` field.
 
 ## Your Ticket (PM-5214): Activity Feed
 
-Your product manager wrote this:
-
----
-
-Add an **Activity Feed** to the Kanban board. Users should be able to see what happened on a board.
+Same task as Group A. Add an **Activity Feed** to the Kanban board.
 
 **New endpoints:**
 
@@ -51,89 +47,106 @@ Add an **Activity Feed** to the Kanban board. Users should be able to see what h
 
 **Changes to existing endpoints:**
 
-`POST /cards/:id/move` (already exists in `src/routes/cards.ts`)
-- Must atomically write an ActivityEvent (`action: "card_moved"`) together with the card status change
-- If the event write fails, the card move must roll back
-- Auth: 401 · 403 · 404 as above
+`POST /cards/:id/move` — write an ActivityEvent (`action: "card_moved"`) atomically with the card move
 
-`POST /cards/:id/comments` (already exists in `src/routes/cards.ts`)
-- Must write an ActivityEvent (`action: "comment_added"`)
+`POST /cards/:id/comments` — write an ActivityEvent (`action: "comment_added"`)
 
-**Technical debt to address as part of this ticket:**
+**Known issues in this scaffold** (intentional — scoring rewards fixing them):
 
 | File | Line(s) | Issue |
 |------|---------|-------|
-| `src/routes/boards.ts` | 23, 41 | Direct `prisma.*` calls in route handler — move persistence to a repository |
+| `src/routes/boards.ts` | 23, 41 | Direct `prisma.*` calls — move to repository |
 | `src/routes/cards.ts` | 18, 67 | Same |
 | `src/routes/users.ts` | 31 | Same |
-| `src/middleware/auth.ts` | 12 | `JWT_SECRET = "hardcoded-secret"` — must read from `process.env.JWT_SECRET` |
-| `src/routes/boards.ts` | 41 | N+1 query on board load — replace with a JOIN |
-| `src/routes/cards.ts` | 67 | Missing transaction — wrap status change + activity write in `prisma.$transaction` |
+| `src/middleware/auth.ts` | 12 | Hardcoded JWT secret |
+| `src/routes/boards.ts` | 41 | N+1 query |
+| `src/routes/cards.ts` | 67 | Missing transaction |
 
-**Definition of done:**
-- [ ] All new endpoints return correct status codes
-- [ ] Activity events written atomically with the operations that trigger them
-- [ ] No direct `prisma.*` calls in your new files
-- [ ] `JWT_SECRET` read from environment variable
-- [ ] Tests cover the new endpoints
-- [ ] README updated with an Activity Feed section
-
----
-
-## Success Criteria## Success Criteria (8 pts automated + 6 pts hidden live tests = 14 pts total)
+## Scoring (8 pts automated on every push · 6 pts hidden live tests = 14 pts)
 
 | Property | Pts | What earns it |
 |----------|-----|---------------|
-| **Executable** | 3 | API contracts pass: correct HTTP status codes, response shapes *(hidden live test)* |
-| **Composable** | 3 | HTTP layer translates only — business logic never leaks into routes *(hidden live test)* |
+| **Executable** | 3 | API contracts pass: correct HTTP status codes, response shapes *(hidden)* |
+| **Composable** | 3 | HTTP layer translates only — business logic never leaks into routes *(hidden)* |
 | **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
 | **Bounded** | 2 | Zero direct `prisma.*` calls in route files — persistence behind a repository layer |
-| **Auditable** | 2 | ≥50% conventional commits (1pt) + one decision log entry: document a design choice you made and why (1pt) |
+| **Auditable** | 2 | ≥50% conventional commits (1pt) + at least one decision log entry (1pt) |
 | **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors — type contracts intact |
-| **Total** | **14** | 8 pts automated on push · 6 pts revealed after submission |
-## How to Work
-- Use the prompt cards in `PROMPT_CARDS.md`, in order
-- Before each prompt: write what you plan to change in `PROMPT_LOG.md`
-- **Commit after each prompt card** — use `git commit -m "prompt-N: description"`. Aim for at least one commit every 15–20 minutes.
-- Create `OBSERVATIONS.md` and jot notes as you go
+| **Defended** | 1 | Zero TypeScript errors |
+| **Total** | **14** | |
 
-## What to Observe (write notes in OBSERVATIONS.md as you go)
+## Step 1 — Add ForgeCraft to your AI assistant
+
+In VS Code with GitHub Copilot, create `.vscode/mcp.json` in this folder:
+```json
+{
+  "servers": {
+    "forgecraft": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "forgecraft-mcp@1.4.0"]
+    }
+  }
+}
+```
+
+Open Copilot Chat → Agent mode → confirm `forgecraft` appears in tools.
+
+## Step 2 — Run setup on the brownfield project
+
+Tell your AI assistant, replacing the path with wherever you cloned the repo:
+
+```
+I have an existing project at [path to your cloned repo].
+It is a Kanban board API. Use the forgecraft MCP tool to run setup_project on it.
+```
+
+After setup, ForgeCraft will surface the known anti-patterns as violations. Let it.
+
+## Step 3 — Implement the Activity Feed
+
+Once setup and audit are done:
+
+```
+Now implement the Activity Feed feature (PM-5214 in START.md).
+Follow the ForgeCraft workflow — check_cascade first, then TDD.
+Fix the violations the audit flagged as you go.
+```
+
+## Observations (write in OBSERVATIONS.md)
 
 **Process:**
-- [ ] How many prompts did it take to reach a working endpoint?
+- [ ] How many prompts to reach a working endpoint?
 - [ ] What fraction of your time was prompting vs manually fixing?
-- [ ] Did you need to repeat or rephrase any prompt more than once?
+- [ ] Did you need to repeat or rephrase any prompt?
 
 **Quality:**
 - [ ] Did the AI introduce anti-patterns you didn't ask for?
-- [ ] Did the AI fix problems you didn't mention?
-- [ ] Are there direct prisma.* calls in your new route files?
-- [ ] Does the response include any fields that shouldn't be exposed?
+- [ ] Are there direct `prisma.*` calls in your new route files?
 
-**Automation:**
-- [ ] Which anti-patterns did you notice immediately? (N+1, hardcoded JWT, etc.)
-- [ ] How many prompt cards felt wrong or needed major edits?
-- [ ] What was confusing about the tools or workflow?
+**ForgeCraft:**
+- [ ] Did ForgeCraft detect this as a brownfield project?
+- [ ] Did audit_project surface the N+1, hardcoded JWT, missing error handler?
+- [ ] Did the workflow slow down or speed up the feature implementation?
+- [ ] What was confusing?
 
 ## Before You Finish
 
-Run these checks:
 ```bash
-npm test              # All tests should pass
-npm run build         # Should compile clean (no TypeScript errors)
+npm test              # all tests should pass
+npm run build         # no TypeScript errors
 ```
 
 Check manually:
-- Open your new route file. Is there any `prisma.` in it? (Should be 0)
-- Run `git log --oneline -10`. Are ≥50% of your commits prefixed with feat:/fix:/chore:?
-- Does your README describe the feature you built?
+- Open your new route file — any `prisma.` calls? (should be 0)
+- `git log --oneline -10` — are ≥50% prefixed with `feat:`/`fix:`/`chore:`?
+- Does your README describe what you built?
 
-Commit your OBSERVATIONS.md:
+Commit and push:
 ```bash
 git add -A
-git commit -m "obs: session observations and notes"
+git commit -m "obs: session notes"
 git push origin participant/P007    # replace P007 with your number
 ```
 
-Then let the facilitator know you've pushed — the score will update automatically.
+Let the facilitator know you've pushed — score updates automatically.
