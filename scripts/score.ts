@@ -305,6 +305,16 @@ function main(): void {
   console.log(`─────────────────────────────────────────`);
   console.log(`Automated total  ${automatedScore}/${automatedMax}  (14 total with live tests)`);
   console.log('\nscore.json written.\n');
+  // Intake gate — loud CI warning if consent not recorded
+  if (intake.status !== 'complete') {
+    const msg = intake.status === 'missing'
+      ? 'INTAKE.md not found — complete and commit it before your final push.'
+      : 'INTAKE incomplete — tick the consent checkbox and answer all three questions.';
+    console.error('\n' + '═'.repeat(50));
+    console.error('⚠️  CONSENT GATE: ' + msg);
+    console.error('Your score is recorded but this session may be EXCLUDED from analysis.');
+    console.error('═'.repeat(50) + '\n');
+  }
 }
 
 main();
