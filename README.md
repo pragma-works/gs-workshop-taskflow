@@ -1,136 +1,68 @@
-# taskflow — Workshop Project 2
+# taskflow — Workshop Project
 
 A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
 move cards between them, and discuss work in comments.
 
 ---
 
-## Setup (2 minutes)
+## Your instructions are in START.md
+
+Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+
+---
+
+## Setup
 
 ```bash
-cp .env.example .env
 npm install
-npm run db:push
-npm run db:seed
-npm run dev
-```
-
-Server runs on `http://localhost:3001`.
-
-Seed data: **alice**, **bob**, **carol** — all password `password123` — one board, three lists,
-five cards, eleven comments across those cards.
-
-### Get a token
-
-```bash
-curl -s -X POST http://localhost:3001/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"alice@test.com","password":"password123"}' | jq .token
-```
-
-Export it and use throughout testing:
-
-```bash
-export TOKEN="<token from above>"
-curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3001/boards/1 | jq .
-```
-
-Try loading the board and watch your terminal — count the SQL queries.
-
----
-
-## Your Task: Activity Feed
-
-Implement a chronological activity feed for a board.
-
-### New endpoints to build
-
-| Endpoint | Description |
-|---|---|
-| `GET /boards/:id/activity` | All activity on the board (auth required) |
-| `POST /cards/:id/move` | Move a card — must write an activity event atomically |
-| `GET /boards/:id/activity/preview` | No-auth testing endpoint |
-
-### Activity event shape
-
-```json
-{
-  "id": 1,
-  "boardId": 1,
-  "actorId": 1,
-  "actorName": "Alice",
-  "eventType": "card_moved",
-  "cardId": 3,
-  "cardTitle": "Fix login redirect",
-  "fromListName": "Backlog",
-  "toListName": "In Progress",
-  "timestamp": "2026-04-07T10:00:00.000Z"
-}
-```
-
-Event types: `card_created`, `card_moved`, `card_commented`.
-
-### Acceptance check
-
-```bash
-# move a card
-curl -s -X PATCH http://localhost:3001/cards/1/move \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"targetListId": 2, "position": 0}'
-
-# preview the feed
-curl -s http://localhost:3001/boards/1/activity/preview | jq .
-
-# must return at least one event with actorName and cardTitle
+npm run db:push   # creates the SQLite database
+npm run dev       # starts on http://localhost:3000
+npm test          # run tests
 ```
 
 ---
 
-## Group Instructions
+## How scoring works
 
-### Group A — Prompt-Only (CLAUDE.md approach)
+Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
 
-Use only the five prompt cards in `PROMPT_CARDS.md`, in order.
-Copy each prompt into your AI assistant exactly as written.
-Log what you changed about each prompt before sending it.
+1. Checks out your code
+2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
+3. Writes the result to `score.json` on your branch (committed by the bot)
+4. Uploads it as a workflow artifact
 
-### Group B — Direct Conversation
+**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
 
-Work directly with the AI however you normally would.
-No constraints on how you prompt — do what feels natural.
-
----
-
-## Scoring (run at end of session)
-
-```bash
-# 1. Tests written
-npm test 2>/dev/null | tail -5
-
-# 2. Direct DB calls remaining in routes (lower is better — 0 means clean separation)
-grep -rn "prisma\." src/routes/ | wc -l
-
-# 3. Feature works
-curl -s http://localhost:3001/boards/1/activity/preview | jq 'length'
-
-# 4. Move atomicity — does a failed comment log desync the card position?
-# (manual: kill process mid-move and check DB state)
-```
-
-Record in the shared sheet: participant ID, group (A or B), test count, prisma-in-routes count,
-feature working (Y/N), and one observation about the process.
+The score is re-computed on every push, so the latest push always reflects your current state.
 
 ---
 
-## Known anti-patterns in this codebase
+## What gets scored (automated, 8 pts)
 
-You will find these as you work. You don't have to fix them all — but the scoring
-rewards solutions that eliminate them, and the scoring penalizes solutions that add more.
+| Property | Pts | What earns it |
+|----------|-----|---------------|
+| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
+| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
+| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
+| **Bounded** | 2 | Zero direct `db.*` calls in route files |
+| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
+| **Self-describing** | 1 | README describes what you built |
+| **Defended** | 1 | Zero TypeScript errors |
 
-- The JWT secret is hardcoded in three places
-- `PATCH /cards/:id/move` moves the card but does not log activity — two separate operations
-  with no transaction, so a crash between them leaves the database inconsistent
-- `GET /boards/:id` issues one query per list, one per card, and one per label on each card
-- No global error handler — unhandled throws return raw Express 500 HTML
-- Passwords returned in user responses
+Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
+
+---
+
+## Scoring is blind
+
+`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
+
+---
+
+## What good looks like
+
+- Cards belong to columns; columns belong to boards — correct ownership enforced
+- Moving a card to Done does not delete it
+- Comments are attached to cards, not boards
+- JWT secret comes from an env var, never hardcoded
+- Every endpoint has at least one test
