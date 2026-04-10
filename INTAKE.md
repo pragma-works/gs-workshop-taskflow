@@ -17,7 +17,7 @@ Answer: 6–18 months
 
 **Q2: How frequently do you use AI in your coding workflow?**
 
-Answer: 
+Answer: Daily
 
 **Q3: How would you rate your current AI workflow?**
 
