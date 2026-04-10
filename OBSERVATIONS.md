@@ -5,16 +5,16 @@ One sentence per question — no pressure to write more.
 
 ## What worked well?
 
-<!-- Replace with one sentence: what felt smooth or productive today? -->
+Using the Copilot CLI to learn and apply refactoring felt smooth — especially having clear acceptance criteria made it easy to review AI-generated code.
 
 ## What slowed you down?
 
-<!-- Replace with one sentence: friction, confusion, or time sinks? -->
+Copilot sometimes made unexpected moves and required close supervision, though it was very helpful for the overall refactoring.
 
 ## How did you handle git commits today?
 
-<!-- Replace with one of: typed commands manually / told the AI / mixed -->
+told the AI
 
 ## Anything surprising?
 
-<!-- Optional: anything the AI did or didn't do that you didn't expect? -->
+When tasks and acceptance criteria are well-defined, the AI sticks closely to the instructions, making code review much more manageable.
