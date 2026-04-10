@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "mutate": [
+    "src/routes/activity.ts",
+    "src/routes/cards.ts"
+  ],
+  "testRunnerNodeArgs": ["--require", "ts-node/register"],
+  "reporters": ["clear-text", "progress"],
+  "coverageAnalysis": "perTest",
+  "timeoutMS": 10000,
+  "concurrency": 2
+}
