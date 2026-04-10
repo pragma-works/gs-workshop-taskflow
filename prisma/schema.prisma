@@ -18,7 +18,7 @@ model User {
   boards          BoardMember[]
   cards           Card[]           @relation("assignee")
   comments        Comment[]
-  activityEvents  ActivityEvent[]
+  activityEvents  ActivityEvent[]  @relation("actor")
 }
 
 model Board {
@@ -41,12 +41,14 @@ model BoardMember {
 }
 
 model List {
-  id        Int      @id @default(autoincrement())
-  name      String
-  position  Int
-  boardId   Int
-  board     Board    @relation(fields: [boardId], references: [id])
-  cards     Card[]
+  id                   Int             @id @default(autoincrement())
+  name                 String
+  position             Int
+  boardId              Int
+  board                Board           @relation(fields: [boardId], references: [id])
+  cards                Card[]
+  fromActivityEvents   ActivityEvent[] @relation("fromList")
+  toActivityEvents     ActivityEvent[] @relation("toList")
 }
 
 model Card {
@@ -92,14 +94,17 @@ model Comment {
 }
 
 model ActivityEvent {
-  id         Int      @id @default(autoincrement())
-  type       String   // "card_move" | "comment"
-  boardId    Int
-  cardId     Int
-  userId     Int
-  meta       String?  // JSON: { fromListId, toListId, fromListName, toListName, cardTitle }
-  createdAt  DateTime @default(now())
-  board      Board    @relation(fields: [boardId], references: [id])
-  card       Card     @relation(fields: [cardId], references: [id])
-  user       User     @relation(fields: [userId], references: [id])
+  id          Int      @id @default(autoincrement())
+  boardId     Int
+  actorId     Int
+  eventType   String
+  cardId      Int?
+  fromListId  Int?
+  toListId    Int?
+  createdAt   DateTime @default(now())
+  board       Board    @relation(fields: [boardId], references: [id])
+  actor       User     @relation("actor", fields: [actorId], references: [id])
+  card        Card?    @relation(fields: [cardId], references: [id])
+  fromList    List?    @relation("fromList", fields: [fromListId], references: [id])
+  toList      List?    @relation("toList", fields: [toListId], references: [id])
 }

@@ -79,37 +79,31 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
     return
   }
 
-  // ANTI-PATTERN: no ownership/membership check before moving
-
   const fromListId = card.listId
   const boardId = card.list.boardId
 
-  const [fromList, toList] = await Promise.all([
-    prisma.list.findUnique({ where: { id: fromListId } }),
-    prisma.list.findUnique({ where: { id: targetListId } }),
-  ])
-
-  // Atomic: card update + activity event in a single transaction
-  await prisma.$transaction([
-    prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } }),
-    prisma.activityEvent.create({
-      data: {
-        type: 'card_move',
-        boardId,
-        cardId,
-        userId,
-        meta: JSON.stringify({
+  try {
+    const [, event] = await prisma.$transaction([
+      prisma.card.update({
+        where: { id: cardId },
+        data: { listId: targetListId, position },
+      }),
+      prisma.activityEvent.create({
+        data: {
+          eventType: 'card_moved',
+          boardId,
+          actorId: userId,
+          cardId,
           fromListId,
           toListId: targetListId,
-          fromListName: fromList?.name,
-          toListName: toList?.name,
-          cardTitle: card.title,
-        }),
-      },
-    }),
-  ])
+        },
+      }),
+    ])
 
-  res.json({ ok: true })
+    res.json({ ok: true, event })
+  } catch (err) {
+    res.status(500).json({ error: 'Move failed', details: (err as Error).message })
+  }
 })
 
 // POST /cards/:id/comments — add comment
