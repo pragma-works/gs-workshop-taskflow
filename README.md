@@ -5,6 +5,17 @@ move cards between them, and discuss work in comments.
 
 ---
 
+## What was built
+
+This session implemented a **chronological activity feed** for boards (PM-5214):
+
+- `GET /boards/:id/activity` — authenticated endpoint returning all `ActivityEvent` records for a board in reverse chronological order, with `actorName`, `cardTitle`, `fromListName`, and `toListName` resolved via a single Prisma `include` query (max 2 DB queries total).
+- `GET /boards/:id/activity/preview` — same response shape, no auth required (for testing).
+- `PATCH /cards/:id/move` — rewritten to update the card and create an `ActivityEvent` atomically inside a single `prisma.$transaction`. On failure returns `500 { error, details }`; on success returns `{ ok: true, event }`.
+- `ActivityEvent` model added to schema with proper FK columns: `actorId`, `eventType`, `cardId?`, `fromListId?`, `toListId?`.
+
+---
+
 ## Your instructions are in START.md
 
 Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
