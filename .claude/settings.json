@@ -1,0 +1,79 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@upstash/context7-mcp@latest"
+      ]
+    },
+    "forgecraft": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "forgecraft-mcp"
+      ]
+    },
+    "npm-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-npm-search"
+      ]
+    },
+    "postman": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-postman"
+      ],
+      "env": {
+        "POSTMAN_API_KEY": ""
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "spec-workflow": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "spec-workflow-mcp"
+      ]
+    },
+    "stripe": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@stripe/mcp-server"
+      ],
+      "env": {
+        "STRIPE_SECRET_KEY": ""
+      }
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__filesystem__*",
+      "mcp__context7__*",
+      "mcp__forgecraft__*",
+      "mcp__npm-search__*",
+      "mcp__postman__*",
+      "mcp__sequential-thinking__*",
+      "mcp__spec-workflow__*",
+      "mcp__stripe__*"
+    ]
+  }
+}
