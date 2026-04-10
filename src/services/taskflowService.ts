@@ -61,7 +61,7 @@ export async function getBoardByIdForUser(userId: number, boardId: number) {
   }))
 
   return {
-    ...board,
+    ...boardWithDetails,
     lists,
   }
 }
