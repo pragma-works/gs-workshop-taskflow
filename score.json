@@ -1,35 +1,30 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "c811096",
-    "branch": "condition-a",
-    "timestamp": "2026-03-30T15:45:14.980Z",
+    "commit": "7fd7d3d",
+    "branch": "participant/P044",
+    "timestamp": "2026-04-10T21:11:05.427Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
       "score": 1,
       "max": 1,
-      "details": "README present (3675 chars)"
+      "details": "README updated by participant (3160 chars)"
     },
     "bounded": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "31 direct DB calls found — repository layer missing",
-      "violations": [
-        "src/db.ts",
-        "src/routes/boards.ts",
-        "src/routes/cards.ts",
-        "src/routes/users.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
-      "testsPassed": 0,
+      "details": "Tests: 4 passed, 0 failed | Coverage: 30.7%",
+      "testsPassed": 4,
       "testsFailed": 0,
-      "coveragePct": null
+      "coveragePct": 30.66
     },
     "defended": {
       "score": 1,
@@ -37,11 +32,11 @@
       "details": "Structural guard present: CI workflow"
     },
     "auditable": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "Conventional commits: 5/5 (100%) | ADR/decision doc: missing",
+      "details": "Conventional commits: 26/26 (100%) | Decision log: present",
       "conventionalPct": 1,
-      "hasAdr": false
+      "hasDecisionLog": true
     },
     "composable": {
       "score": null,
@@ -54,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 3,
+      "score": 7,
       "max": 8
     },
     "total_with_live_tests": {
@@ -63,16 +58,23 @@
       "details": "Available after hidden live tests (Composable + Executable)"
     }
   },
+  "intake": {
+    "status": "consent_pending",
+    "consented": false,
+    "q1": null,
+    "q2": null,
+    "q3": null
+  },
   "external_metrics": {
-    "tscErrors": 1,
+    "tscErrors": 0,
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
-    "auditHigh": 0,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
-    "testCoverage": null,
-    "testCount": 0,
+    "auditHigh": 1,
+    "duplicatePct": 1.76,
+    "branchCount": 42,
+    "testCoverage": 30.66,
+    "testCount": 4,
     "depCount": 4
   }
 }
