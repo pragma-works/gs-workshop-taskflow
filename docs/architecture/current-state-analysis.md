@@ -1,5 +1,7 @@
 # Current State Analysis
 
+Status note: this document captures the pre-implementation baseline. For the state after completing the workshop feature, see `docs/architecture/post-implementation-review.md` and `docs/architecture/solution-overview.md`.
+
 Date: 2026-04-10
 Scope: Initial assessment before implementing the activity feed workshop task.
 
