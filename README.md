@@ -5,6 +5,32 @@ move cards between them, and discuss work in comments.
 
 ---
 
+## What was built
+
+This session implemented the **activity feed** feature (PM-5214) and fixed several pre-existing anti-patterns:
+
+### New feature: Activity Feed
+- `ActivityEvent` model added to the schema (boardId, actorId, eventType, cardId, fromListId, toListId)
+- `PATCH /cards/:id/move` now atomically updates the card **and** creates an `ActivityEvent` in a single Prisma transaction — no more split-brain state
+- `GET /boards/:id/activity` — authenticated endpoint returning all activity for a board in reverse chronological order, with actor name, card title, and list names resolved
+- `GET /boards/:id/activity/preview` — unauthenticated version for testing
+
+### Anti-patterns fixed
+| Anti-pattern | Fix |
+|---|---|
+| JWT secret hardcoded in 3 files | Moved to `process.env.JWT_SECRET` via `src/lib/auth.ts` |
+| `PATCH /cards/:id/move` — no transaction | Rewritten with `prisma.$transaction` |
+| `GET /boards/:id` — N+1 queries | Replaced with single Prisma `include` query |
+| No global error handler | Express error middleware added to `src/index.ts` |
+| Passwords returned in user responses | `password` field stripped before sending |
+
+### Architecture
+- `src/repositories/` — all Prisma calls isolated here (one file per domain)
+- `src/lib/auth.ts` — shared `verifyToken` using env var secret
+- Route handlers contain no direct DB calls
+
+---
+
 ## Your instructions are in START.md
 
 Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
@@ -50,12 +76,6 @@ The score is re-computed on every push, so the latest push always reflects your 
 | **Defended** | 1 | Zero TypeScript errors |
 
 Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
-
----
-
-## Scoring is blind
-
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
 
 ---
 

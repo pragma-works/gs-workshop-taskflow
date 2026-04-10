@@ -10,22 +10,24 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
+  id           Int             @id @default(autoincrement())
+  email        String          @unique
   password     String
   name         String
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime        @default(now())
   boards       BoardMember[]
-  cards        Card[]        @relation("assignee")
+  cards        Card[]          @relation("assignee")
   comments     Comment[]
+  actorEvents  ActivityEvent[] @relation("actorEvents")
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
-  name      String
-  createdAt DateTime      @default(now())
-  members   BoardMember[]
-  lists     List[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  createdAt      DateTime        @default(now())
+  members        BoardMember[]
+  lists          List[]
+  activityEvents ActivityEvent[]
 }
 
 model BoardMember {
@@ -39,27 +41,30 @@ model BoardMember {
 }
 
 model List {
-  id        Int      @id @default(autoincrement())
-  name      String
-  position  Int
-  boardId   Int
-  board     Board    @relation(fields: [boardId], references: [id])
-  cards     Card[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  position       Int
+  boardId        Int
+  board          Board           @relation(fields: [boardId], references: [id])
+  cards          Card[]
+  fromListEvents ActivityEvent[] @relation("fromListEvents")
+  toListEvents   ActivityEvent[] @relation("toListEvents")
 }
 
 model Card {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  position    Int
-  dueDate     DateTime?
-  listId      Int
-  assigneeId  Int?
-  createdAt   DateTime  @default(now())
-  list        List      @relation(fields: [listId], references: [id])
-  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
-  comments    Comment[]
-  labels      CardLabel[]
+  id             Int             @id @default(autoincrement())
+  title          String
+  description    String?
+  position       Int
+  dueDate        DateTime?
+  listId         Int
+  assigneeId     Int?
+  createdAt      DateTime        @default(now())
+  list           List            @relation(fields: [listId], references: [id])
+  assignee       User?           @relation("assignee", fields: [assigneeId], references: [id])
+  comments       Comment[]
+  labels         CardLabel[]
+  activityEvents ActivityEvent[]
 }
 
 model Label {
@@ -86,4 +91,20 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id         Int      @id @default(autoincrement())
+  boardId    Int
+  actorId    Int
+  eventType  String
+  cardId     Int?
+  fromListId Int?
+  toListId   Int?
+  createdAt  DateTime @default(now())
+  board      Board    @relation(fields: [boardId], references: [id])
+  actor      User     @relation("actorEvents", fields: [actorId], references: [id])
+  card       Card?    @relation(fields: [cardId], references: [id])
+  fromList   List?    @relation("fromListEvents", fields: [fromListId], references: [id])
+  toList     List?    @relation("toListEvents", fields: [toListId], references: [id])
 }
