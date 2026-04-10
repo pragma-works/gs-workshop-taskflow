@@ -1,21 +1,36 @@
+process.env.JWT_SECRET = 'test-secret'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
 import * as jwt from 'jsonwebtoken'
 
-// Mock prisma before importing anything that depends on it
-vi.mock('../db', () => ({
-  default: {
-    boardMember:   { findUnique: vi.fn() },
-    card:          { findUnique: vi.fn(), update: vi.fn() },
-    activityEvent: { findMany: vi.fn(), create: vi.fn() },
-    $transaction:  vi.fn(),
-  },
+vi.mock('../services/activityService', () => ({
+  getActivityForBoard: vi.fn(),
+  formatEvents: vi.fn(),
+}))
+
+vi.mock('../services/boardService', () => ({
+  getMembership: vi.fn(),
+  getBoardsForUser: vi.fn(),
+  getBoardById: vi.fn(),
+  createBoard: vi.fn(),
+  addMember: vi.fn(),
+}))
+
+vi.mock('../services/cardService', () => ({
+  getCardById: vi.fn(),
+  moveCard: vi.fn(),
+  createCard: vi.fn(),
+  addComment: vi.fn(),
+  deleteCard: vi.fn(),
 }))
 
 import app from '../index'
-import prisma from '../db'
+import { getActivityForBoard, formatEvents } from '../services/activityService'
+import { getMembership } from '../services/boardService'
+import { getCardById, moveCard } from '../services/cardService'
 
-const SECRET = 'super-secret-key-change-me'
+const SECRET = 'test-secret'
 
 function makeToken(userId: number): string {
   return jwt.sign({ userId }, SECRET)
@@ -32,6 +47,8 @@ const mockCard = (overrides = {}) => ({
   assigneeId: null,
   createdAt: new Date('2024-01-01T10:00:00Z'),
   list: { boardId: 99 },
+  comments: [],
+  labels: [],
   ...overrides,
 })
 
@@ -46,6 +63,18 @@ const mockEvent = (createdAt: string, overrides = {}) => ({
   fromList: { name: 'To Do' },
   toList:   { name: 'In Progress' },
   ...overrides,
+})
+
+const mockFormatted = (event: ReturnType<typeof mockEvent>) => ({
+  id:           event.id,
+  eventType:    event.eventType,
+  createdAt:    event.createdAt,
+  boardId:      event.boardId,
+  cardId:       event.cardId,
+  actorName:    event.actor.name,
+  cardTitle:    event.card?.title ?? null,
+  fromListName: event.fromList?.name ?? null,
+  toListName:   event.toList?.name ?? null,
 })
 
 beforeEach(() => {
@@ -63,7 +92,7 @@ describe('GET /boards/:id/activity', () => {
   })
 
   it('returns 403 when the caller is not a member of the board', async () => {
-    vi.mocked(prisma.boardMember.findUnique).mockResolvedValueOnce(null)
+    vi.mocked(getMembership).mockResolvedValueOnce(null)
 
     const res = await request(app)
       .get('/boards/99/activity')
@@ -74,12 +103,14 @@ describe('GET /boards/:id/activity', () => {
   })
 
   it('returns the activity feed for a board member', async () => {
-    vi.mocked(prisma.boardMember.findUnique).mockResolvedValueOnce(
+    const event = mockEvent('2024-01-02T12:00:00Z')
+    const formatted = mockFormatted(event)
+
+    vi.mocked(getMembership).mockResolvedValueOnce(
       { userId: 7, boardId: 99, role: 'member' } as any,
     )
-    vi.mocked(prisma.activityEvent.findMany).mockResolvedValueOnce([
-      mockEvent('2024-01-02T12:00:00Z') as any,
-    ])
+    vi.mocked(getActivityForBoard).mockResolvedValueOnce([event] as any)
+    vi.mocked(formatEvents).mockReturnValueOnce([formatted])
 
     const res = await request(app)
       .get('/boards/99/activity')
@@ -103,11 +134,9 @@ describe('PATCH /cards/:id/move', () => {
     const card = mockCard()
     const event = mockEvent('2024-01-02T12:00:00Z', { fromListId: 10, toListId: 20 })
 
-    vi.mocked(prisma.card.findUnique).mockResolvedValueOnce(card as any)
-    vi.mocked(prisma.$transaction).mockResolvedValueOnce([
-      { ...card, listId: 20, position: 1 },
-      event,
-    ] as any)
+    vi.mocked(getCardById).mockResolvedValueOnce(card as any)
+    vi.mocked(getMembership).mockResolvedValueOnce({ userId: 7, boardId: 99, role: 'member' } as any)
+    vi.mocked(moveCard).mockResolvedValueOnce({ ok: true, event })
 
     const res = await request(app)
       .patch('/cards/1/move')
@@ -117,14 +146,15 @@ describe('PATCH /cards/:id/move', () => {
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ ok: true })
     expect(res.body.event).toBeDefined()
-    // Transaction must have been called exactly once (atomic)
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    // moveCard must have been called exactly once (atomic operation)
+    expect(moveCard).toHaveBeenCalledTimes(1)
   })
 
   it('rolls back cleanly and returns 500 when the move transaction fails', async () => {
     const card = mockCard()
-    vi.mocked(prisma.card.findUnique).mockResolvedValueOnce(card as any)
-    vi.mocked(prisma.$transaction).mockRejectedValueOnce(
+    vi.mocked(getCardById).mockResolvedValueOnce(card as any)
+    vi.mocked(getMembership).mockResolvedValueOnce({ userId: 7, boardId: 99, role: 'member' } as any)
+    vi.mocked(moveCard).mockRejectedValueOnce(
       new Error('Foreign key constraint failed on field: toListId'),
     )
 
@@ -149,30 +179,39 @@ describe('GET /boards/:id/activity/preview', () => {
       mockEvent('2024-01-02T08:00:00Z', { id: 2 }),
       mockEvent('2024-01-01T07:00:00Z', { id: 1 }),
     ]
-    vi.mocked(prisma.activityEvent.findMany).mockResolvedValueOnce(events as any)
+    const formatted = events.map(mockFormatted)
+
+    vi.mocked(getActivityForBoard).mockResolvedValueOnce(events as any)
+    vi.mocked(formatEvents).mockReturnValueOnce(formatted)
 
     const res = await request(app).get('/boards/99/activity/preview')
 
     expect(res.status).toBe(200)
     // Verify no auth header was needed (no 401)
-    const ids = res.body.map((e: any) => e.id)
+    const ids = res.body.map((e: { id: number }) => e.id)
     expect(ids).toEqual([3, 2, 1])
     // Timestamps should be descending
-    const timestamps = res.body.map((e: any) => new Date(e.createdAt).getTime())
+    const timestamps = res.body.map((e: { createdAt: string }) => new Date(e.createdAt).getTime())
     expect(timestamps[0]).toBeGreaterThan(timestamps[1])
     expect(timestamps[1]).toBeGreaterThan(timestamps[2])
   })
 
   it('returns null for optional fields when card or lists are not associated', async () => {
-    vi.mocked(prisma.activityEvent.findMany).mockResolvedValueOnce([
-      {
-        ...mockEvent('2024-01-01T00:00:00Z'),
-        cardId:   null,
-        card:     null,
-        fromList: null,
-        toList:   null,
-      } as any,
-    ])
+    const event = {
+      ...mockEvent('2024-01-01T00:00:00Z'),
+      cardId:   null,
+      card:     null,
+      fromList: null,
+      toList:   null,
+    }
+    const formatted = {
+      id: event.id, eventType: event.eventType, createdAt: event.createdAt,
+      boardId: event.boardId, cardId: null, actorName: 'Alice',
+      cardTitle: null, fromListName: null, toListName: null,
+    }
+
+    vi.mocked(getActivityForBoard).mockResolvedValueOnce([event] as any)
+    vi.mocked(formatEvents).mockReturnValueOnce([formatted])
 
     const res = await request(app).get('/boards/99/activity/preview')
 
