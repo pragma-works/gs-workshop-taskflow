@@ -1,16 +1,8 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
 import prisma from '../db'
+import { verifyToken } from '../lib/auth'
 
 const router = Router()
-
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
 
 const activityInclude = {
   actor:    { select: { name: true } },

@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress"],
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/routes/activity.ts",
+    "src/routes/boards.ts",
+    "src/routes/cards.ts",
+    "src/routes/users.ts",
+    "src/lib/auth.ts"
+  ],
+  "thresholds": { "high": 70, "low": 50, "break": 0 }
+}

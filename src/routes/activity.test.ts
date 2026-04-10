@@ -8,18 +8,19 @@ vi.mock('../db', () => ({
     boardMember:   { findUnique: vi.fn() },
     activityEvent: { findMany: vi.fn(), create: vi.fn() },
     card:          { findUnique: vi.fn(), update: vi.fn() },
+    list:          { findUnique: vi.fn() },
     $transaction:  vi.fn(),
   },
 }))
 
 import app from '../index'
 import prisma from '../db'
+import { JWT_SECRET } from '../lib/auth'
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-const SECRET = 'super-secret-key-change-me'
 const bearerToken = (userId: number) =>
-  `Bearer ${jwt.sign({ userId }, SECRET)}`
+  `Bearer ${jwt.sign({ userId }, JWT_SECRET)}`
 
 // Cast to `any` so we can call .mockResolvedValue / .mockRejectedValue
 // without fighting Prisma's deeply-typed overloads.
@@ -92,6 +93,8 @@ describe('PATCH /cards/:id/move', () => {
     const mockEvent = { id: 5, eventType: 'card_moved', cardId: 10 }
 
     db.card.findUnique.mockResolvedValue(card)
+    db.list.findUnique.mockResolvedValue({ id: 3, boardId: 1 })
+    db.boardMember.findUnique.mockResolvedValue({ userId: 1, boardId: 1, role: 'member' })
     db.card.update.mockResolvedValue({ ...card, listId: 3 })
     db.activityEvent.create.mockResolvedValue(mockEvent)
     // Simulate Prisma resolving each operation in the batch
@@ -152,8 +155,10 @@ describe('GET /boards/:id/activity/preview', () => {
 // ── 4. Moving a card to a non-existent list rolls back cleanly ──────────────
 
 describe('PATCH /cards/:id/move — database failure', () => {
-  it('returns 500 with error details and rolls back when the transaction fails', async () => {
+  it('returns 500 without internal details and rolls back when the transaction fails', async () => {
     db.card.findUnique.mockResolvedValue(makeCard())
+    db.list.findUnique.mockResolvedValue({ id: 9999, boardId: 1 })
+    db.boardMember.findUnique.mockResolvedValue({ userId: 1, boardId: 1, role: 'member' })
     db.card.update.mockResolvedValue({})
     db.activityEvent.create.mockResolvedValue({})
     // Simulate a FK constraint violation (non-existent targetListId)
@@ -167,8 +172,8 @@ describe('PATCH /cards/:id/move — database failure', () => {
       .send({ targetListId: 9999, position: 0 })
 
     expect(res.status).toBe(500)
-    expect(res.body.error).toBe('Move failed')
-    expect(res.body.details).toContain('Foreign key constraint')
+    expect(res.body).toEqual({ error: 'Move failed' })
+    expect(res.body).not.toHaveProperty('details')
   })
 
   it('returns 404 when the card does not exist', async () => {
