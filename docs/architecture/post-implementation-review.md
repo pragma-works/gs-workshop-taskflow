@@ -1,12 +1,12 @@
 # Post-Implementation Review
 
 Date: 2026-04-10
-Scope: Review of the codebase after completing the workshop prompts for the activity feed.
+Scope: Review of the codebase after completing the workshop prompts and a first hardening pass.
 
 ## Summary
 
 The workshop feature is implemented and working.
-The codebase now supports persistent board activity events, an authenticated board activity feed, a preview endpoint, and automated regression tests for the main feature behavior.
+The codebase now supports persistent board activity events, an authenticated board activity feed, a preview endpoint, automated regression tests, shared auth/config/error handling, and a thinner route layer.
 
 ## What Was Added
 
@@ -15,6 +15,10 @@ The codebase now supports persistent board activity events, an authenticated boa
 - authenticated activity feed endpoint
 - preview activity feed endpoint
 - automated integration tests with in-memory SQLite
+- shared auth and token signing utilities
+- centralized JSON error handling
+- service modules for boards, cards, activity, and users
+- sanitized user responses
 - repository-local experiment log and architecture documentation
 
 ## What Improved
@@ -32,35 +36,46 @@ Board activity is now stored as explicit events instead of being inferred from c
 The application can now be imported into tests without automatically starting the HTTP server.
 This enabled meaningful integration tests against the API surface.
 
+### Separation Of Concerns
+
+Routes no longer orchestrate most database operations directly.
+That logic has been moved into service modules, which reduces controller complexity and lowers the direct Prisma usage in production route files.
+
+### Security And Response Hygiene
+
+User routes no longer expose password hashes.
+JWT operations now flow through shared helpers instead of duplicated route-local implementations.
+
+### Error Handling
+
+Unhandled application and Prisma errors now pass through a global JSON error handler rather than default Express HTML responses.
+
 ### Query Discipline In The New Feature
 
 The activity feed endpoints avoid loop-based database querying and rely on relation loading.
 
 ## What Survived
 
-The original anti-pattern list is only partially improved.
-The following problems still exist and should be treated as follow-up work:
+The original anti-pattern list has been significantly reduced, but follow-up work still exists:
 
-- JWT secret hardcoded in multiple places
-- duplicated token verification logic
-- direct Prisma calls in route handlers
-- no global error handler
-- passwords returned in user responses
-- authorization gaps for board membership, deletion, and member administration
-- N+1 query patterns in board and card detail endpoints
+- configuration still allows a fallback JWT secret for local convenience
+- Prisma is still process-global and used directly in services
+- request body validation is still minimal
+- event generation is still incomplete beyond card movement
+- mutation testing is not yet in place
 
 ## Current Metrics
 
-- Automated tests: 4
-- Direct `prisma.` usages in `src/routes`: 42
+- Automated tests: 7
+- Direct `prisma.` usages in production `src/routes`: 0
 - Feature working: yes
 
 ## Manual Verification Notes
 
 The feature was validated by logging in, moving a card, and confirming that the event appears in the preview feed.
 Rollback behavior was verified with an automated test that attempts to move a card to a non-existent list.
+Application startup and type-check validation were also re-run after the hardening refactor.
 
 ## Recommendation
 
-The next phase should focus on structural hardening rather than adding more features directly into route files.
-Priority should go to configuration centralization, auth reuse, route slimming, and safer response contracts.
+The next phase should focus on request validation, repository extraction, broader authorization coverage, and mutation testing.
