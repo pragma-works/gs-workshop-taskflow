@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "b3e69b4",
+    "commit": "13cfb87",
     "branch": "participant/P036",
-    "timestamp": "2026-04-10T21:02:31.824Z",
+    "timestamp": "2026-04-10T21:12:59.527Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -32,11 +32,11 @@
       "details": "Structural guard present: CI workflow"
     },
     "auditable": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "Conventional commits: 31/31 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "details": "Conventional commits: 36/36 (100%) | Decision log: present",
       "conventionalPct": 1,
-      "hasDecisionLog": false
+      "hasDecisionLog": true
     },
     "composable": {
       "score": null,
@@ -49,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 5,
+      "score": 6,
       "max": 8
     },
     "total_with_live_tests": {
@@ -59,10 +59,10 @@
     }
   },
   "intake": {
-    "status": "consent_pending",
+    "status": "complete",
     "consented": true,
     "q1": "6–18 months",
-    "q2": null,
+    "q2": "Daily",
     "q3": "still figuring it out"
   },
   "external_metrics": {
@@ -71,7 +71,7 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 5.28,
+    "duplicatePct": 6.9,
     "branchCount": 16,
     "testCoverage": null,
     "testCount": 0,
