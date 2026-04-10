@@ -1,23 +1,23 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "c811096",
-    "branch": "condition-a",
-    "timestamp": "2026-03-30T15:45:14.980Z",
+    "commit": "42b6418",
+    "branch": "participant/P042",
+    "timestamp": "2026-04-10T21:09:47.703Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
       "score": 1,
       "max": 1,
-      "details": "README present (3675 chars)"
+      "details": "README updated by participant (4367 chars)"
     },
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "31 direct DB calls found — repository layer missing",
+      "details": "32 direct DB calls found — repository layer missing",
       "violations": [
-        "src/db.ts",
+        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts"
@@ -39,9 +39,9 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 5/5 (100%) | ADR/decision doc: missing",
+      "details": "Conventional commits: 25/25 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
       "conventionalPct": 1,
-      "hasAdr": false
+      "hasDecisionLog": false
     },
     "composable": {
       "score": null,
@@ -63,14 +63,21 @@
       "details": "Available after hidden live tests (Composable + Executable)"
     }
   },
+  "intake": {
+    "status": "complete",
+    "consented": true,
+    "q1": "18+ months",
+    "q2": "daily",
+    "q3": "confident and systematic"
+  },
   "external_metrics": {
-    "tscErrors": 1,
+    "tscErrors": 0,
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
-    "auditHigh": 0,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
+    "auditHigh": 1,
+    "duplicatePct": 5.71,
+    "branchCount": 28,
     "testCoverage": null,
     "testCount": 0,
     "depCount": 4
