@@ -65,6 +65,16 @@ export async function isBoardMember(userId: number, boardId: number): Promise<bo
 }
 
 /**
+ * Checks if a board exists by ID.
+ * @param boardId - The board's ID
+ * @returns {Promise<boolean>} True if the board exists
+ */
+export async function boardExists(boardId: number): Promise<boolean> {
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true } })
+  return board !== null
+}
+
+/**
  * Adds a member to a board.
  * @param memberId - User ID to add
  * @param boardId - The board's ID

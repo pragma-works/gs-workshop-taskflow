@@ -1,20 +1,9 @@
 import { Router, Request, Response } from 'express'
 import { verifyToken } from '../middleware/auth'
-import { isBoardMember } from '../repositories/boardRepository'
+import { isBoardMember, boardExists } from '../repositories/boardRepository'
 import { getActivityForBoard, getActivityPreview } from '../repositories/activityRepository'
-import prisma from '../db'
 
 const router = Router({ mergeParams: true })
-
-/**
- * Checks that a board exists.
- * @param boardId - The board's ID
- * @returns {Promise<boolean>} True if the board exists
- */
-async function boardExists(boardId: number): Promise<boolean> {
-  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true } })
-  return board !== null
-}
 
 // GET /boards/:id/activity — full activity feed (auth required)
 router.get('/', async (req: Request, res: Response) => {
