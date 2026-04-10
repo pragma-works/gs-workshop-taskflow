@@ -1,70 +1,41 @@
+import type { PrismaClient } from '@prisma/client'
 import prisma from '../db'
 import type {
   ICardRepository,
   CardRow,
   CreatedCardRow,
   CreateCardInput,
-  CreateActivityEventForNewCard,
-  MoveCardInput,
+  UpdateCardInput,
 } from './types'
 
 export class PrismaCardRepository implements ICardRepository {
+  // `client` accepts either the top-level PrismaClient or a Prisma transaction
+  // client so that this repository can participate in a UnitOfWork transaction.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(private readonly client: any = prisma) {}
+
   async findById(id: number): Promise<CardRow | null> {
-    return prisma.card.findUnique({
-      where: { id },
+    return this.client.card.findUnique({
+      where:  { id },
       select: {
         id:       true,
         title:    true,
         listId:   true,
         position: true,
-        list: { select: { id: true, name: true, boardId: true } },
+        list:     { select: { id: true, name: true, boardId: true } },
       },
-    })
+    }) as Promise<CardRow | null>
   }
 
   async countInList(listId: number): Promise<number> {
-    return prisma.card.count({ where: { listId } })
+    return this.client.card.count({ where: { listId } })
   }
 
-  async createWithEvent(
-    cardData:  CreateCardInput,
-    eventData: CreateActivityEventForNewCard,
-  ): Promise<CreatedCardRow> {
-    return prisma.$transaction(async (tx) => {
-      const card = await tx.card.create({ data: cardData })
-      await tx.activityEvent.create({
-        data: {
-          boardId:      eventData.boardId,
-          cardId:       card.id,        // filled in after card is created
-          userId:       eventData.userId,
-          eventType:    eventData.eventType,
-          cardTitle:    eventData.cardTitle,
-          fromListName: eventData.fromListName ?? null,
-          toListName:   eventData.toListName   ?? null,
-        },
-      })
-      return card
-    })
+  async create(data: CreateCardInput): Promise<CreatedCardRow> {
+    return this.client.card.create({ data }) as Promise<CreatedCardRow>
   }
 
-  async moveWithEvent(input: MoveCardInput): Promise<void> {
-    const ev = input.activityEvent
-    await prisma.$transaction([
-      prisma.card.update({
-        where: { id: input.cardId },
-        data:  { listId: input.targetListId, position: input.position },
-      }),
-      prisma.activityEvent.create({
-        data: {
-          boardId:      ev.boardId,
-          cardId:       ev.cardId,
-          userId:       ev.userId,
-          eventType:    ev.eventType,
-          cardTitle:    ev.cardTitle,
-          fromListName: ev.fromListName ?? null,
-          toListName:   ev.toListName   ?? null,
-        },
-      }),
-    ])
+  async update(id: number, data: UpdateCardInput): Promise<void> {
+    await this.client.card.update({ where: { id }, data })
   }
 }

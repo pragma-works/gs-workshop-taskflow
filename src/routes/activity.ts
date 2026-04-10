@@ -1,40 +1,48 @@
-import { Router, Request, Response, NextFunction } from 'express'
-import { verifyToken } from '../auth'
-import { ActivityService } from '../services/ActivityService'
+import { Router } from 'express'
+import { authenticate } from '../auth'
 import { PrismaActivityRepository } from '../repositories/PrismaActivityRepository'
 import { PrismaBoardMemberRepository } from '../repositories/PrismaBoardMemberRepository'
+import { ActivityService } from '../services/ActivityService'
 
+// mergeParams: true makes :id from the parent mount (/boards/:id/activity) visible.
 const router = Router({ mergeParams: true })
 
-// Manual dependency injection — no container needed at this scale.
-const service = new ActivityService(
-  new PrismaActivityRepository(),
-  new PrismaBoardMemberRepository(),
-)
+const activityRepo    = new PrismaActivityRepository()
+const boardMemberRepo = new PrismaBoardMemberRepository()
+const activityService = new ActivityService(activityRepo, boardMemberRepo)
 
-// GET /boards/:id/activity — auth + membership required
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
-  let userId: number
+// GET /boards/:id/activity  — auth required
+router.get('/', authenticate, async (req, res, next) => {
   try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  try {
-    const boardId = parseInt(req.params.id)
-    res.json(await service.getForBoard(boardId, userId))
+    const boardId = Number((req.params as any).id)
+    const userId  = (req as any).user.id
+    const events  = await activityService.getForBoard(
+      boardId,
+      userId,
+      req.query.limit,
+      req.query.offset,
+    )
+    res.json(events)
   } catch (err) {
-    next(err) // AppError subclasses are mapped by the global handler
+    next(err)
   }
 })
 
-// GET /boards/:id/activity/preview — no auth
-router.get('/preview', async (req: Request, res: Response, next: NextFunction) => {
+// GET /boards/:id/activity/preview  — no auth (dev/test only)
+router.get('/preview', async (req, res, next) => {
   try {
-    const boardId = parseInt(req.params.id)
-    res.json(await service.getPreview(boardId))
+    if (process.env.NODE_ENV === 'production') {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
+
+    const boardId = Number((req.params as any).id)
+    const events  = await activityService.getPreview(
+      boardId,
+      req.query.limit,
+      req.query.offset,
+    )
+    res.json(events)
   } catch (err) {
     next(err)
   }

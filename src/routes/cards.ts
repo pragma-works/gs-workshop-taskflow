@@ -1,117 +1,76 @@
-import { Router, Request, Response, NextFunction } from 'express'
-import prisma from '../db'
-import { verifyToken } from '../auth'
-import { CardService } from '../services/CardService'
+import { Router } from 'express'
+import { authenticate } from '../auth'
 import { PrismaCardRepository } from '../repositories/PrismaCardRepository'
 import { PrismaListRepository } from '../repositories/PrismaListRepository'
-import { PrismaCommentRepository } from '../repositories/PrismaCommentRepository'
+import { PrismaUnitOfWork } from '../repositories/PrismaUnitOfWork'
+import { CardService } from '../services/CardService'
+import prisma from '../db'
 
+// Mounted at /cards in index.ts; all paths here are relative.
 const router = Router()
 
-// Manual dependency injection — one instance per module.
-const cardService = new CardService(
-  new PrismaCardRepository(),
-  new PrismaListRepository(),
-  new PrismaCommentRepository(),
-)
+const cardRepo    = new PrismaCardRepository()
+const listRepo    = new PrismaListRepository()
+const uow         = new PrismaUnitOfWork()
+const cardService = new CardService(cardRepo, listRepo, uow)
 
-// GET /cards/:id — not part of new feature; unchanged (N+1 is a pre-existing issue)
-router.get('/:id', async (req: Request, res: Response) => {
+// GET /cards/:id
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
-  const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-  // ANTI-PATTERN: N+1 for labels (pre-existing, out of scope)
-  const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
-  const labels = []
-  for (const cl of cardLabels) {
-    const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
-    labels.push(label)
-  }
-  res.json({ ...card, comments, labels })
-})
-
-// POST /cards — create card + card_created event (atomic via CardService)
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  try {
-    const { title, description, listId, assigneeId } = req.body
-    const card = await cardService.createCard({ title, description, listId, assigneeId }, userId)
-    res.status(201).json(card)
+    const card = await prisma.card.findUnique({
+      where:   { id: Number(req.params.id) },
+      include: { assignee: { select: { id: true, name: true, email: true } } },
+    })
+    if (!card) { res.status(404).json({ error: 'Card not found' }); return }
+    res.json(card)
   } catch (err) {
     next(err)
   }
 })
 
-// PATCH /cards/:id/move — move card + card_moved event (atomic via CardService)
-router.patch('/:id/move', async (req: Request, res: Response, next: NextFunction) => {
-  let userId: number
+// PATCH /cards/:id/move
+router.patch('/:id/move', authenticate, async (req, res, next) => {
   try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  try {
-    const cardId = parseInt(req.params.id)
+    const actor        = (req as any).user
+    const cardId       = Number(req.params.id)
     const { targetListId, position } = req.body
-    await cardService.moveCard(cardId, targetListId, position, userId)
-    res.json({ ok: true })
+
+    if (!targetListId || position === undefined) {
+      res.status(400).json({ error: 'targetListId and position are required' })
+      return
+    }
+
+    const result = await cardService.moveCard(cardId, Number(targetListId), Number(position), actor)
+    res.json(result)
   } catch (err) {
     next(err)
   }
 })
 
-// POST /cards/:id/comments — add comment + card_commented event (atomic via CardService)
-router.post('/:id/comments', async (req: Request, res: Response, next: NextFunction) => {
-  let userId: number
+// DELETE /cards/:id
+router.delete('/:id', authenticate, async (req, res, next) => {
   try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
+    await prisma.card.delete({ where: { id: Number(req.params.id) } })
+    res.status(204).send()
+  } catch (err) {
+    next(err)
   }
+})
 
+// POST /cards/:id/comments
+router.post('/:id/comments', authenticate, async (req, res, next) => {
   try {
-    const cardId = parseInt(req.params.id)
+    const actor   = (req as any).user
+    const cardId  = Number(req.params.id)
     const { content } = req.body
-    const comment = await cardService.addComment(cardId, content, userId)
+
+    if (!content) { res.status(400).json({ error: 'content is required' }); return }
+
+    const comment = await cardService.addComment(cardId, content, actor)
     res.status(201).json(comment)
   } catch (err) {
     next(err)
   }
-})
-
-// DELETE /cards/:id — not part of new feature; unchanged
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check (pre-existing, out of scope)
-  await prisma.card.delete({ where: { id: cardId } })
-  res.json({ ok: true })
 })
 
 export default router

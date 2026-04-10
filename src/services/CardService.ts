@@ -1,106 +1,113 @@
-import { BadRequestError, NotFoundError } from '../errors'
-import type {
-  ICardRepository,
-  IListRepository,
-  ICommentRepository,
-  CreatedCardRow,
-  CommentRow,
-} from '../repositories/types'
+import { EventType } from '../domain/activityEvent'
+import { BadRequestError, ForbiddenError, NotFoundError } from '../errors'
+import type { IUnitOfWork } from '../repositories/IUnitOfWork'
+import type { ICardRepository, IListRepository } from '../repositories/types'
+
+export interface AuthenticatedActor {
+  id:   number
+  name: string
+}
 
 export class CardService {
   constructor(
-    private readonly cardRepo:    ICardRepository,
-    private readonly listRepo:    IListRepository,
-    private readonly commentRepo: ICommentRepository,
+    private readonly cardRepo: ICardRepository,
+    private readonly listRepo: IListRepository,
+    private readonly uow:      IUnitOfWork,
   ) {}
 
-  /**
-   * Creates a card and a card_created activity event atomically.
-   * Throws BadRequestError if the target list does not exist.
-   */
   async createCard(
-    {
-      title,
-      description,
-      listId,
-      assigneeId,
-    }: { title: string; description?: string | null; listId: number; assigneeId?: number | null },
-    userId: number,
-  ): Promise<CreatedCardRow> {
+    listId:  number,
+    title:   string,
+    description: string | null,
+    assigneeId:  number | null,
+    boardId: number,
+    actor:   AuthenticatedActor,
+  ) {
     const list = await this.listRepo.findById(listId)
-    if (!list) throw new BadRequestError('List not found')
+    if (!list)                     throw new NotFoundError('List not found')
+    if (list.boardId !== boardId)  throw new ForbiddenError('List does not belong to this board')
 
-    const position = await this.cardRepo.countInList(listId)
+    return this.uow.run(async ({ cards, activities }) => {
+      const count    = await cards.countInList(listId)
+      const position = count + 1
 
-    return this.cardRepo.createWithEvent(
-      { title, description, listId, assigneeId, position },
-      {
-        boardId:    list.boardId,
-        userId,
-        eventType:  'card_created',
-        cardTitle:  title,
-        toListName: list.name,
-      },
-    )
+      const card = await cards.create({ title, description, listId, assigneeId, position })
+
+      await activities.create({
+        boardId,
+        cardId:    card.id,
+        userId:    actor.id,
+        eventType: EventType.CardCreated,
+        cardTitle: title,
+      })
+
+      return card
+    })
   }
 
-  /**
-   * Moves a card to a different list and records a card_moved event atomically.
-   * Throws NotFoundError if the card does not exist.
-   * Throws BadRequestError if the target list does not exist.
-   */
   async moveCard(
     cardId:       number,
     targetListId: number,
     position:     number,
-    userId:       number,
-  ): Promise<void> {
+    actor:        AuthenticatedActor,
+  ) {
     const card = await this.cardRepo.findById(cardId)
     if (!card) throw new NotFoundError('Card not found')
 
-    const [fromList, toList] = await Promise.all([
-      this.listRepo.findById(card.listId),
-      this.listRepo.findById(targetListId),
-    ])
-    if (!toList) throw new BadRequestError('Target list not found')
+    const targetList = await this.listRepo.findById(targetListId)
+    if (!targetList) throw new BadRequestError('Target list not found')
 
-    await this.cardRepo.moveWithEvent({
-      cardId,
-      targetListId,
-      position,
-      activityEvent: {
-        boardId:      toList.boardId,
+    // Same-board validation: card.list.boardId must equal targetList.boardId
+    if (card.list.boardId !== targetList.boardId) {
+      throw new BadRequestError('Target list does not belong to the same board as the card')
+    }
+
+    const count = await this.cardRepo.countInList(targetListId)
+    const max   = card.listId === targetListId ? count : count + 1
+    if (position < 0 || position > max) {
+      throw new BadRequestError(`Position must be between 1 and ${max}`)
+    }
+
+    const fromListName = card.list.name
+    const boardId      = card.list.boardId
+
+    return this.uow.run(async ({ cards, activities }) => {
+      await cards.update(cardId, { listId: targetListId, position })
+
+      await activities.create({
+        boardId,
         cardId,
-        userId,
-        eventType:    'card_moved',
-        cardTitle:    card.title,
-        fromListName: fromList?.name ?? null,
-        toListName:   toList.name,
-      },
+        userId:    actor.id,
+        eventType: EventType.CardMoved,
+        cardTitle: card.title,
+        fromListName,
+        toListName: targetList.name,
+      })
+
+      return { success: true }
     })
   }
 
-  /**
-   * Adds a comment to a card and records a card_commented event atomically.
-   * Throws NotFoundError if the card does not exist.
-   */
   async addComment(
     cardId:  number,
     content: string,
-    userId:  number,
-  ): Promise<CommentRow> {
+    actor:   AuthenticatedActor,
+  ) {
     const card = await this.cardRepo.findById(cardId)
     if (!card) throw new NotFoundError('Card not found')
 
-    return this.commentRepo.createWithEvent(
-      { content, cardId, userId },
-      {
+    return this.uow.run(async ({ comments, activities }) => {
+      const comment = await comments.create({ content, cardId, userId: actor.id })
+
+      await activities.create({
         boardId:   card.list.boardId,
         cardId,
-        userId,
-        eventType: 'card_commented',
+        userId:    actor.id,
+        eventType: EventType.CardCommented,
         cardTitle: card.title,
-      },
-    )
+      })
+
+      return comment
+    })
   }
 }

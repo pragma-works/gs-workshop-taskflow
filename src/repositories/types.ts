@@ -39,7 +39,7 @@ export interface ActivityEventDto {
   boardId:      number
   actorId:      number
   actorName:    string
-  eventType:    string
+  eventType:    string   // EventType enum value serialised to string in JSON
   cardId:       number
   cardTitle:    string
   fromListName: string | null
@@ -47,20 +47,17 @@ export interface ActivityEventDto {
   timestamp:    Date
 }
 
-// ─── Input types ──────────────────────────────────────────────────────────────
+// ─── Input / command types ────────────────────────────────────────────────────
 
 export interface CreateActivityEventInput {
   boardId:      number
   cardId:       number
   userId:       number
-  eventType:    string
+  eventType:    string   // accepts EventType enum value
   cardTitle:    string
   fromListName?: string | null
   toListName?:  string | null
 }
-
-/** Used when creating a card+event atomically: cardId is not yet known. */
-export type CreateActivityEventForNewCard = Omit<CreateActivityEventInput, 'cardId'>
 
 export interface CreateCardInput {
   title:        string
@@ -70,11 +67,9 @@ export interface CreateCardInput {
   position:     number
 }
 
-export interface MoveCardInput {
-  cardId:        number
-  targetListId:  number
-  position:      number
-  activityEvent: CreateActivityEventInput
+export interface UpdateCardInput {
+  listId:   number
+  position: number
 }
 
 export interface CreateCommentInput {
@@ -83,22 +78,28 @@ export interface CreateCommentInput {
   userId:  number
 }
 
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+export interface PaginationOptions {
+  /** Number of events to return. Capped at 100 by the application layer. */
+  limit:  number
+  /** Zero-based offset for cursor-less pagination. */
+  offset: number
+}
+
 // ─── Repository interfaces ────────────────────────────────────────────────────
+// Services depend on these — never on concrete Prisma types.
 
 export interface IActivityRepository {
-  listForBoard(boardId: number): Promise<ActivityEventDto[]>
+  listForBoard(boardId: number, options: PaginationOptions): Promise<ActivityEventDto[]>
+  create(data: CreateActivityEventInput): Promise<void>
 }
 
 export interface ICardRepository {
   findById(id: number): Promise<CardRow | null>
   countInList(listId: number): Promise<number>
-  /** Creates card and activity event in a single atomic transaction. */
-  createWithEvent(
-    cardData:  CreateCardInput,
-    eventData: CreateActivityEventForNewCard,
-  ): Promise<CreatedCardRow>
-  /** Updates card.listId and creates a card_moved event atomically. */
-  moveWithEvent(input: MoveCardInput): Promise<void>
+  create(data: CreateCardInput): Promise<CreatedCardRow>
+  update(id: number, data: UpdateCardInput): Promise<void>
 }
 
 export interface IListRepository {
@@ -110,9 +111,5 @@ export interface IBoardMemberRepository {
 }
 
 export interface ICommentRepository {
-  /** Creates comment and activity event in a single atomic transaction. */
-  createWithEvent(
-    data:      CreateCommentInput,
-    eventData: CreateActivityEventInput,
-  ): Promise<CommentRow>
+  create(data: CreateCommentInput): Promise<CommentRow>
 }

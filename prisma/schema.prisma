@@ -104,4 +104,7 @@ model ActivityEvent {
   board        Board    @relation(fields: [boardId], references: [id])
   card         Card     @relation(fields: [cardId], references: [id])
   actor        User     @relation("actor", fields: [userId], references: [id])
+
+  // Supports efficient descending-timestamp queries scoped to a board.
+  @@index([boardId, createdAt(sort: Desc)])
 }

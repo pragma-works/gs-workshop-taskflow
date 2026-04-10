@@ -1,36 +1,39 @@
 import prisma from '../db'
-import type { IActivityRepository, ActivityEventDto } from './types'
+import type {
+  IActivityRepository,
+  ActivityEventDto,
+  CreateActivityEventInput,
+  PaginationOptions,
+} from './types'
 
 export class PrismaActivityRepository implements IActivityRepository {
-  async listForBoard(boardId: number): Promise<ActivityEventDto[]> {
-    const rows = await prisma.activityEvent.findMany({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(private readonly client: any = prisma) {}
+
+  async listForBoard(boardId: number, options: PaginationOptions): Promise<ActivityEventDto[]> {
+    const rows = await this.client.activityEvent.findMany({
       where:   { boardId },
       orderBy: { createdAt: 'desc' },
-      take:    50,
-      select: {
-        id:           true,
-        boardId:      true,
-        eventType:    true,
-        cardTitle:    true,
-        fromListName: true,
-        toListName:   true,
-        createdAt:    true,
-        actor: { select: { id: true, name: true } },
-        card:  { select: { id: true } },
-      },
+      skip:    options.offset,
+      take:    options.limit,
+      include: { actor: { select: { id: true, name: true } } },
     })
 
-    return rows.map(r => ({
+    return rows.map((r: any) => ({
       id:           r.id,
       boardId:      r.boardId,
       actorId:      r.actor.id,
       actorName:    r.actor.name,
       eventType:    r.eventType,
-      cardId:       r.card.id,
+      cardId:       r.cardId,
       cardTitle:    r.cardTitle,
-      fromListName: r.fromListName,
-      toListName:   r.toListName,
+      fromListName: r.fromListName ?? null,
+      toListName:   r.toListName ?? null,
       timestamp:    r.createdAt,
     }))
+  }
+
+  async create(data: CreateActivityEventInput): Promise<void> {
+    await this.client.activityEvent.create({ data })
   }
 }

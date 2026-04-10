@@ -1,30 +1,11 @@
 import prisma from '../db'
-import type {
-  ICommentRepository,
-  CreateCommentInput,
-  CreateActivityEventInput,
-  CommentRow,
-} from './types'
+import type { ICommentRepository, CreateCommentInput, CommentRow } from './types'
 
 export class PrismaCommentRepository implements ICommentRepository {
-  async createWithEvent(
-    data:      CreateCommentInput,
-    eventData: CreateActivityEventInput,
-  ): Promise<CommentRow> {
-    return prisma.$transaction(async (tx) => {
-      const comment = await tx.comment.create({ data })
-      await tx.activityEvent.create({
-        data: {
-          boardId:      eventData.boardId,
-          cardId:       eventData.cardId,
-          userId:       eventData.userId,
-          eventType:    eventData.eventType,
-          cardTitle:    eventData.cardTitle,
-          fromListName: null,
-          toListName:   null,
-        },
-      })
-      return comment
-    })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(private readonly client: any = prisma) {}
+
+  async create(data: CreateCommentInput): Promise<CommentRow> {
+    return this.client.comment.create({ data }) as Promise<CommentRow>
   }
 }
