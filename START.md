@@ -111,7 +111,6 @@ Commit and push:
 ```bash
 git add -A
 git commit -m "obs: session notes"
+git pull --rebase origin participant/P007    # bot may have committed score.json — pull first
 git push origin participant/P007    # replace P007 with your number
 ```
-
-Let the facilitator know you've pushed — score updates automatically.
