@@ -1,16 +1,16 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "48c78ae",
+    "commit": "2ebea71",
     "branch": "participant/P030",
-    "timestamp": "2026-04-10T22:03:12.596Z",
+    "timestamp": "2026-04-10T22:09:33.626Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
-      "score": 0,
+      "score": 1,
       "max": 1,
-      "details": "README not modified from template — update it to describe what you built"
+      "details": "README updated by participant (3195 chars)"
     },
     "bounded": {
       "score": 0,
@@ -39,8 +39,8 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 28/29 (97%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 0.9655172413793104,
+      "details": "Conventional commits: 30/31 (97%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.967741935483871,
       "hasDecisionLog": false
     },
     "composable": {
@@ -54,7 +54,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 3,
+      "score": 4,
       "max": 8
     },
     "total_with_live_tests": {
