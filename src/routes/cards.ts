@@ -1,125 +1,103 @@
-import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import { Router } from 'express'
+
+import { verifyToken } from '../lib/auth'
+import { asyncHandler } from '../lib/asyncHandler'
+import { HttpError, getErrorMessage } from '../lib/errors'
+import {
+  createCardAtEnd,
+  createComment,
+  deleteCardById,
+  findCardForMove,
+  findCardWithDetails,
+  findListById,
+  isBoardMember,
+  moveCardWithActivity,
+} from '../repositories/taskflowRepository'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
-
-// GET /cards/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
     verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const card = await findCardWithDetails(Number.parseInt(req.params.id, 10))
+    if (!card) {
+      throw new HttpError(404, 'Not found')
+    }
 
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
-  const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-  // ANTI-PATTERN: N+1 for labels
-  const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
-  const labels = []
-  for (const cl of cardLabels) {
-    const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
-    labels.push(label)
-  }
-  res.json({ ...card, comments, labels })
-})
+    res.json(card)
+  }),
+)
 
-// POST /cards — create card
-router.post('/', async (req: Request, res: Response) => {
-  try {
+router.post(
+  '/',
+  asyncHandler(async (req, res) => {
     verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const { title, description, listId, assigneeId } = req.body
+    const card = await createCardAtEnd({ title, description, listId, assigneeId })
+    res.status(201).json(card)
+  }),
+)
 
-  const { title, description, listId, assigneeId } = req.body
-  // ANTI-PATTERN: position not calculated — just appended with no ordering logic
-  const count = await prisma.card.count({ where: { listId } })
-  const card = await prisma.card.create({
-    data: { title, description, listId, assigneeId, position: count },
-  })
-  res.status(201).json(card)
-})
+router.patch(
+  '/:id/move',
+  asyncHandler(async (req, res) => {
+    const userId = verifyToken(req)
+    const cardId = Number.parseInt(req.params.id, 10)
+    const { targetListId, position } = req.body
 
-// PATCH /cards/:id/move — move card to different list
-router.patch('/:id/move', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const card = await findCardForMove(cardId)
+    if (!card) {
+      throw new HttpError(404, 'Not found')
+    }
 
-  const cardId = parseInt(req.params.id)
-  const { targetListId, position } = req.body
+    if (!(await isBoardMember(userId, card.list.boardId))) {
+      throw new HttpError(403, 'Not a board member')
+    }
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } })
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
+    const targetList = await findListById(targetListId)
+    if (!targetList || targetList.boardId !== card.list.boardId) {
+      throw new HttpError(404, 'Not found')
+    }
 
-  // ANTI-PATTERN: no ownership/membership check before moving
+    try {
+      const event = await moveCardWithActivity({
+        cardId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        fromListId: card.listId,
+        targetListId,
+        position,
+      })
 
-  const fromListId = card.listId
+      res.json({ ok: true, event })
+    } catch (error: unknown) {
+      res.status(500).json({
+        error: 'Move failed',
+        details: getErrorMessage(error),
+      })
+    }
+  }),
+)
 
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
+router.post(
+  '/:id/comments',
+  asyncHandler(async (req, res) => {
+    const userId = verifyToken(req)
+    const { content } = req.body
+    const cardId = Number.parseInt(req.params.id, 10)
+    const comment = await createComment({ content, cardId, userId })
+    res.status(201).json(comment)
+  }),
+)
 
-  // Log the move — in a separate write, outside any transaction
-  // (This is also where participants discover the desync risk)
-  console.log(`Card ${cardId} moved from list ${fromListId} to ${targetListId} by user ${userId}`)
-
-  res.json({ ok: true })
-})
-
-// POST /cards/:id/comments — add comment
-router.post('/:id/comments', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const { content } = req.body
-  const cardId = parseInt(req.params.id)
-  const comment = await prisma.comment.create({ data: { content, cardId, userId } })
-  res.status(201).json(comment)
-})
-
-// DELETE /cards/:id
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
+router.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
     verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
-  await prisma.card.delete({ where: { id: cardId } })
-  res.json({ ok: true })
-})
+    await deleteCardById(Number.parseInt(req.params.id, 10))
+    res.json({ ok: true })
+  }),
+)
 
 export default router

@@ -1,56 +1,56 @@
-import { Router, Request, Response } from 'express'
+import { Router } from 'express'
 import * as bcrypt from 'bcryptjs'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+
+import { signUserToken } from '../lib/auth'
+import { asyncHandler } from '../lib/asyncHandler'
+import { HttpError } from '../lib/errors'
+import { createUser, findUserByEmail, findUserById } from '../repositories/taskflowRepository'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted from boards.ts and cards.ts
-// All three files have identical copies — single change requires 3 edits
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret — same string in boards.ts and cards.ts
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
+function toPublicUser<T extends { password: string }>(user: T): Omit<T, 'password'> {
+  const { password, ...publicUser } = user
+  return publicUser
 }
 
-// POST /users/register
-router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, name } = req.body
-  const hashed = await bcrypt.hash(password, 10)
-  const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
-})
+router.post(
+  '/register',
+  asyncHandler(async (req, res) => {
+    const { email, password, name } = req.body
+    const hashed = await bcrypt.hash(password, 10)
+    const user = await createUser({ email, password: hashed, name })
+    res.json(toPublicUser(user))
+  }),
+)
 
-// POST /users/login
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
-  }
-  const valid = await bcrypt.compare(password, user.password)
-  if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
-  }
-  const token = jwt.sign({ userId: user.id }, 'super-secret-key-change-me', { expiresIn: '7d' })
-  res.json({ token })
-})
+router.post(
+  '/login',
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body
+    const user = await findUserByEmail(email)
+    if (!user) {
+      throw new HttpError(401, 'Invalid credentials')
+    }
 
-// GET /users/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!user) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
-})
+    const valid = await bcrypt.compare(password, user.password)
+    if (!valid) {
+      throw new HttpError(401, 'Invalid credentials')
+    }
+
+    res.json({ token: signUserToken(user.id) })
+  }),
+)
+
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const user = await findUserById(Number.parseInt(req.params.id, 10))
+    if (!user) {
+      throw new HttpError(404, 'Not found')
+    }
+
+    res.json(toPublicUser(user))
+  }),
+)
 
 export default router
