@@ -1,21 +1,11 @@
-import express from 'express'
-import activityRouter from './routes/activity'
-import boardsRouter from './routes/boards'
-import cardsRouter  from './routes/cards'
-import usersRouter  from './routes/users'
+import { createApp } from './app'
+import { getAppConfig } from './config'
 
-const app = express()
-app.use(express.json())
+const app = createApp()
+const { port } = getAppConfig()
 
-app.use('/users',  usersRouter)
-app.use('/boards', boardsRouter)
-app.use('/boards', activityRouter)
-app.use('/cards',  cardsRouter)
-
-// ANTI-PATTERN: no global error handler — every unhandled throw returns HTML 500
-const PORT = process.env.PORT || 3001
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+  app.listen(port, () => console.log(`taskflow running on :${port}`))
 }
 
 export default app
