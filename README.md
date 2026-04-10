@@ -1,68 +1,87 @@
-# taskflow — Workshop Project
+# Taskflow API
 
-A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
-move cards between them, and discuss work in comments.
+Taskflow is a Kanban-style backend API used to manage boards, lists, cards and card comments.
 
----
+This workshop version was refactored to be easier to maintain for future developers.
+The main goal of the refactor is to keep endpoint contracts stable while reducing coupling and duplicated logic.
 
-## Your instructions are in START.md
+## Quick start
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+1. Install dependencies
 
----
+	npm install
 
-## Setup
+2. Configure environment variables
 
-```bash
-npm install
-npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
-npm test          # run tests
-```
+	set JWT_SECRET=replace-this-with-a-real-secret
+	set DATABASE_URL=file:./dev.db
 
----
+3. Prepare database
 
-## How scoring works
+	npm run db:push
 
-Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
+4. Run app
 
-1. Checks out your code
-2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
-3. Writes the result to `score.json` on your branch (committed by the bot)
-4. Uploads it as a workflow artifact
+	npm run dev
 
-**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
+5. Run quality checks
 
-The score is re-computed on every push, so the latest push always reflects your current state.
+	npm test
+	npm run typecheck
 
----
+## Architecture
 
-## What gets scored (automated, 8 pts)
+The code follows a thin-route layered structure:
 
-| Property | Pts | What earns it |
-|----------|-----|---------------|
-| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
-| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
-| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
-| **Bounded** | 2 | Zero direct `db.*` calls in route files |
-| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
-| **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors |
+- Routes layer:
+  - Handles HTTP concerns (request/response status and payload shape)
+  - Delegates all business rules to services
 
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
+- Services layer:
+  - Contains business logic, validation and authorization rules
+  - Orchestrates repository calls and response shaping
 
----
+- Repositories layer:
+  - Contains all Prisma/database access
+  - Isolates persistence details from HTTP and business logic
 
-## Scoring is blind
+- Middleware layer:
+  - Shared authentication and error handling
+  - Keeps route files clean and consistent
 
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
+This separation reduces side effects and makes it easier to add features safely.
 
----
+## Folder overview
 
-## What good looks like
+- src/routes: endpoint definitions only
+- src/services: business and application logic
+- src/repositories: Prisma queries and persistence logic
+- src/middleware: auth, async wrapper and global error handling
+- src/auth: JWT signing and verification
+- src/errors: reusable application error type
 
-- Cards belong to columns; columns belong to boards — correct ownership enforced
-- Moving a card to Done does not delete it
-- Comments are attached to cards, not boards
-- JWT secret comes from an env var, never hardcoded
-- Every endpoint has at least one test
+## Security and consistency improvements
+
+- JWT secret is read from JWT_SECRET environment variable.
+- Password hash is no longer returned in user responses.
+- Route-level token parsing duplication was removed.
+- Unauthorized and validation failures return consistent JSON errors.
+
+## Maintainability conventions
+
+- Keep route handlers short and orchestration-only.
+- Never call Prisma directly from route files.
+- Put cross-cutting behavior in middleware.
+- Use AppError for expected failures (401, 403, 404, 400).
+- Add tests for new utility/service code and protect contracts.
+
+## Scoring-related notes
+
+- Bounded: direct Prisma usage moved to repositories.
+- Composable: business logic moved from routes to services.
+- Self-describing: this README documents the implementation.
+- Auditable: design rationale is captured in docs/decisions/001-thin-routes-decision.md.
+
+## Decision log
+
+See docs/decisions/001-thin-routes-decision.md for the architectural decision recorded in this session.
