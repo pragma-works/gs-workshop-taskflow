@@ -127,4 +127,78 @@ router.post('/:id/members', async (req: Request, res: Response) => {
   res.status(201).json({ ok: true })
 })
 
+function formatActivity(a: {
+  id: number
+  boardId: number
+  actorId: number
+  eventType: string
+  cardId: number
+  fromListId: number | null
+  toListId: number | null
+  timestamp: Date
+  actor: { name: string }
+  card: { title: string }
+  fromList: { name: string } | null
+  toList: { name: string } | null
+}) {
+  return {
+    id: a.id,
+    boardId: a.boardId,
+    actorId: a.actorId,
+    actorName: a.actor.name,
+    eventType: a.eventType,
+    cardId: a.cardId,
+    cardTitle: a.card.title,
+    fromListName: a.fromList?.name ?? null,
+    toListName: a.toList?.name ?? null,
+    timestamp: a.timestamp,
+  }
+}
+
+const activityInclude = {
+  actor: { select: { name: true } },
+  card: { select: { title: true } },
+  fromList: { select: { name: true } },
+  toList: { select: { name: true } },
+} as const
+
+// GET /boards/:id/activity — auth required
+router.get('/:id/activity', async (req: Request, res: Response) => {
+  let userId: number
+  try {
+    userId = verifyToken(req)
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  const boardId = parseInt(req.params.id)
+  const isMember = await checkMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
+  const activities = await prisma.activity.findMany({
+    where: { boardId },
+    orderBy: { timestamp: 'desc' },
+    include: activityInclude,
+  })
+
+  res.json(activities.map(formatActivity))
+})
+
+// GET /boards/:id/activity/preview — no auth, for testing
+router.get('/:id/activity/preview', async (req: Request, res: Response) => {
+  const boardId = parseInt(req.params.id)
+
+  const activities = await prisma.activity.findMany({
+    where: { boardId },
+    orderBy: { timestamp: 'desc' },
+    include: activityInclude,
+  })
+
+  res.json(activities.map(formatActivity))
+})
+
 export default router

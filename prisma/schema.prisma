@@ -18,14 +18,16 @@ model User {
   boards       BoardMember[]
   cards        Card[]        @relation("assignee")
   comments     Comment[]
+  activities   Activity[]
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
-  name      String
-  createdAt DateTime      @default(now())
-  members   BoardMember[]
-  lists     List[]
+  id         Int           @id @default(autoincrement())
+  name       String
+  createdAt  DateTime      @default(now())
+  members    BoardMember[]
+  lists      List[]
+  activities Activity[]
 }
 
 model BoardMember {
@@ -39,27 +41,30 @@ model BoardMember {
 }
 
 model List {
-  id        Int      @id @default(autoincrement())
-  name      String
-  position  Int
-  boardId   Int
-  board     Board    @relation(fields: [boardId], references: [id])
-  cards     Card[]
+  id             Int        @id @default(autoincrement())
+  name           String
+  position       Int
+  boardId        Int
+  board          Board      @relation(fields: [boardId], references: [id])
+  cards          Card[]
+  fromActivities Activity[] @relation("ActivityFromList")
+  toActivities   Activity[] @relation("ActivityToList")
 }
 
 model Card {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   title       String
   description String?
   position    Int
   dueDate     DateTime?
   listId      Int
   assigneeId  Int?
-  createdAt   DateTime  @default(now())
-  list        List      @relation(fields: [listId], references: [id])
-  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
+  createdAt   DateTime   @default(now())
+  list        List       @relation(fields: [listId], references: [id])
+  assignee    User?      @relation("assignee", fields: [assigneeId], references: [id])
   comments    Comment[]
   labels      CardLabel[]
+  activities  Activity[]
 }
 
 model Label {
@@ -86,4 +91,20 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model Activity {
+  id         Int      @id @default(autoincrement())
+  boardId    Int
+  actorId    Int
+  eventType  String
+  cardId     Int
+  fromListId Int?
+  toListId   Int?
+  timestamp  DateTime @default(now())
+  board      Board    @relation(fields: [boardId], references: [id])
+  actor      User     @relation(fields: [actorId], references: [id])
+  card       Card     @relation(fields: [cardId], references: [id])
+  fromList   List?    @relation("ActivityFromList", fields: [fromListId], references: [id])
+  toList     List?    @relation("ActivityToList", fields: [toListId], references: [id])
 }
