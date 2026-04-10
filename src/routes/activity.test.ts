@@ -77,8 +77,8 @@ describe('GET /boards/:id/activity', () => {
   it('returns activity events in reverse chronological order for a member', async () => {
     vi.mocked(boardRepo.isBoardMember).mockResolvedValue(true)
     const events = [
-      { id: 2, eventType: 'card_moved', createdAt: new Date('2024-01-02') },
-      { id: 1, eventType: 'card_moved', createdAt: new Date('2024-01-01') },
+      { id: 2, eventType: 'card_moved', createdAt: new Date('2024-01-02'), actorName: 'Alice', cardTitle: 'Fix bug', fromListName: 'Backlog', toListName: 'Done' },
+      { id: 1, eventType: 'card_moved', createdAt: new Date('2024-01-01'), actorName: 'Bob',   cardTitle: 'Feature', fromListName: null,      toListName: null },
     ]
     vi.mocked(activityRepo.getActivityForBoard).mockResolvedValue(events as any)
     const res = await request(app)
@@ -86,6 +86,10 @@ describe('GET /boards/:id/activity', () => {
       .set('Authorization', `Bearer ${makeToken(1)}`)
     expect(res.status).toBe(200)
     expect(res.body[0].id).toBe(2)
+    expect(res.body[0].actorName).toBe('Alice')
+    expect(res.body[0].cardTitle).toBe('Fix bug')
+    expect(res.body[0].fromListName).toBe('Backlog')
+    expect(res.body[0].toListName).toBe('Done')
     expect(res.body[1].id).toBe(1)
   })
 })
@@ -156,5 +160,21 @@ describe('PATCH /cards/:id/move', () => {
 
     expect(res.status).toBe(500)
     expect(res.body.error).toBe('Move failed')
+  })
+
+  it('returns 404 when the target list does not exist and the transaction rolls back', async () => {
+    vi.mocked(cardRepo.getCardById).mockResolvedValue({ id: 1, listId: 1, title: 'T' } as any)
+    vi.mocked(prisma.list.findUnique).mockResolvedValue({ id: 1, boardId: 10 } as any)
+    vi.mocked(boardRepo.isBoardMember).mockResolvedValue(true)
+    // moveCard returns null when fromList lookup fails (target list not found path in repo)
+    vi.mocked(cardRepo.moveCard).mockResolvedValue(null)
+
+    const res = await request(app)
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${makeToken(1)}`)
+      .send({ targetListId: 9999, position: 0 })
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Card or list not found')
   })
 })
