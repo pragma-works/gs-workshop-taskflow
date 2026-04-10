@@ -1,4 +1,3 @@
-import prisma from '../db'
 import { CardRepository } from '../repositories/card.repository'
 import { ActivityRepository } from '../repositories/activity.repository'
 import { CommentRepository } from '../repositories/comment.repository'
@@ -68,35 +67,21 @@ export class CardService {
 
     const fromListId = card.listId
 
-    // Get boardId from the card's list
-    const list = await prisma.list.findUnique({
-      where: { id: card.listId },
-      select: { boardId: true },
-    })
-
-    if (!list) {
+    // Get boardId from the card
+    const boardId = await this.cardRepo.getBoardIdFromCard(cardId)
+    if (!boardId) {
       throw new Error('List not found')
     }
 
-    // Use transaction to ensure atomicity
-    await prisma.$transaction(async (tx) => {
-      // Update card
-      await tx.card.update({
-        where: { id: cardId },
-        data: { listId: targetListId, position },
-      })
-
-      // Log activity
-      await tx.activityEvent.create({
-        data: {
-          boardId: list.boardId,
-          cardId,
-          userId,
-          action: 'card_moved',
-          meta: JSON.stringify({ fromListId, toListId: targetListId }),
-        },
-      })
-    })
+    // Move card and log activity atomically
+    await this.cardRepo.moveCardWithActivity(
+      cardId,
+      targetListId,
+      position,
+      userId,
+      boardId,
+      fromListId
+    )
 
     return true
   }
@@ -109,41 +94,19 @@ export class CardService {
    * @returns Created comment
    */
   async addComment(cardId: number, content: string, userId: number) {
-    // Get card to find boardId
-    const card = await this.cardRepo.findById(cardId)
-    if (!card) {
+    // Get boardId from the card
+    const boardId = await this.cardRepo.getBoardIdFromCard(cardId)
+    if (!boardId) {
       throw new Error('Card not found')
     }
 
-    const list = await prisma.list.findUnique({
-      where: { id: card.listId },
-      select: { boardId: true },
-    })
-
-    if (!list) {
-      throw new Error('List not found')
-    }
-
-    // Use transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx) => {
-      // Create comment
-      const comment = await tx.comment.create({
-        data: { content, cardId, userId },
-      })
-
-      // Log activity
-      await tx.activityEvent.create({
-        data: {
-          boardId: list.boardId,
-          cardId,
-          userId,
-          action: 'comment_added',
-          meta: JSON.stringify({ commentId: comment.id }),
-        },
-      })
-
-      return comment
-    })
+    // Create comment and log activity atomically
+    const result = await this.commentRepo.createWithActivity(
+      cardId,
+      content,
+      userId,
+      boardId
+    )
 
     return result
   }

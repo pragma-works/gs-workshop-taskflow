@@ -89,4 +89,56 @@ export class CardRepository {
   async delete(cardId: number): Promise<void> {
     await prisma.card.delete({ where: { id: cardId } })
   }
+
+  /**
+   * Get the boardId for a card
+   * @param cardId Card ID
+   * @returns Board ID or null
+   */
+  async getBoardIdFromCard(cardId: number): Promise<number | null> {
+    const card = await prisma.card.findUnique({
+      where: { id: cardId },
+      select: {
+        list: {
+          select: { boardId: true },
+        },
+      },
+    })
+    return card?.list.boardId ?? null
+  }
+
+  /**
+   * Move card and log activity atomically
+   * @param cardId Card ID
+   * @param targetListId Target list ID
+   * @param position New position
+   * @param userId User performing the move
+   * @param boardId Board ID for activity log
+   * @param fromListId Original list ID
+   */
+  async moveCardWithActivity(
+    cardId: number,
+    targetListId: number,
+    position: number,
+    userId: number,
+    boardId: number,
+    fromListId: number
+  ): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      await tx.card.update({
+        where: { id: cardId },
+        data: { listId: targetListId, position },
+      })
+
+      await tx.activityEvent.create({
+        data: {
+          boardId,
+          cardId,
+          userId,
+          action: 'card_moved',
+          meta: JSON.stringify({ fromListId, toListId: targetListId }),
+        },
+      })
+    })
+  }
 }
