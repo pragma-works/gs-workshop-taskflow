@@ -1,0 +1,253 @@
+{
+  "statistics": {
+    "detectionDate": "2026-04-10T20:59:26.414Z",
+    "formats": {
+      "typescript": {
+        "sources": {
+          "src/routes/users.ts": {
+            "lines": 43,
+            "tokens": 490,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/cards.ts": {
+            "lines": 99,
+            "tokens": 897,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/boards.ts": {
+            "lines": 90,
+            "tokens": 756,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 48,
+            "duplicatedTokens": 453,
+            "percentage": 53.33,
+            "percentageTokens": 59.92,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/activity.ts": {
+            "lines": 34,
+            "tokens": 320,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 16,
+            "duplicatedTokens": 151,
+            "percentage": 47.06,
+            "percentageTokens": 47.19,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/activity.test.ts": {
+            "lines": 300,
+            "tokens": 4577,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/userRepository.ts": {
+            "lines": 17,
+            "tokens": 227,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/cardRepository.ts": {
+            "lines": 74,
+            "tokens": 712,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/boardRepository.ts": {
+            "lines": 43,
+            "tokens": 457,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/activityRepository.ts": {
+            "lines": 50,
+            "tokens": 518,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/index.ts": {
+            "lines": 22,
+            "tokens": 220,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/db.ts": {
+            "lines": 5,
+            "tokens": 32,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/auth.ts": {
+            "lines": 13,
+            "tokens": 150,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 790,
+          "tokens": 9356,
+          "sources": 12,
+          "clones": 2,
+          "duplicatedLines": 32,
+          "duplicatedTokens": 302,
+          "percentage": 4.05,
+          "percentageTokens": 3.23,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 790,
+      "tokens": 9356,
+      "sources": 12,
+      "clones": 2,
+      "duplicatedLines": 32,
+      "duplicatedTokens": 302,
+      "percentage": 4.05,
+      "percentageTokens": 3.23,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": ", async (req: Request, res: Response) => {\n  let userId: number\n  try {\n    userId = verifyToken(req)\n  } catch {\n    res.status(401).json({ error: 'Unauthorized' })\n    return\n  }\n\n  const boardId = parseInt(req.params.id)\n  const member = await isBoardMember(userId, boardId)\n  if (!member) {\n    res.status(403).json({ error: 'Not a board member' })\n    return\n  }\n\n  const {",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/routes/boards.ts",
+        "start": 70,
+        "end": 86,
+        "startLoc": {
+          "line": 70,
+          "column": 15,
+          "position": 554
+        },
+        "endLoc": {
+          "line": 86,
+          "column": 2,
+          "position": 705
+        }
+      },
+      "secondFile": {
+        "name": "src/routes/boards.ts",
+        "start": 29,
+        "end": 45,
+        "startLoc": {
+          "line": 29,
+          "column": 7,
+          "position": 202
+        },
+        "endLoc": {
+          "line": 45,
+          "column": 6,
+          "position": 353
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 17,
+      "fragment": ", async (req: Request, res: Response) => {\n  let userId: number\n  try {\n    userId = verifyToken(req)\n  } catch {\n    res.status(401).json({ error: 'Unauthorized' })\n    return\n  }\n\n  const boardId = parseInt(req.params.id)\n  const member = await isBoardMember(userId, boardId)\n  if (!member) {\n    res.status(403).json({ error: 'Not a board member' })\n    return\n  }\n\n  const events",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src/routes/activity.ts",
+        "start": 8,
+        "end": 24,
+        "startLoc": {
+          "line": 8,
+          "column": 16,
+          "position": 72
+        },
+        "endLoc": {
+          "line": 24,
+          "column": 7,
+          "position": 223
+        }
+      },
+      "secondFile": {
+        "name": "src/routes/boards.ts",
+        "start": 29,
+        "end": 45,
+        "startLoc": {
+          "line": 29,
+          "column": 7,
+          "position": 202
+        },
+        "endLoc": {
+          "line": 45,
+          "column": 6,
+          "position": 353
+        }
+      }
+    }
+  ]
+}

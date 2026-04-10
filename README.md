@@ -5,6 +5,21 @@ move cards between them, and discuss work in comments.
 
 ---
 
+## What was built (PM-5214 — Activity Feed)
+
+This session implemented the **activity feed** feature and refactored the codebase to a clean repository-layer architecture:
+
+- **`ActivityEvent` model** — tracks every card move with `boardId`, `actorId`, `eventType`, `cardId`, `fromListId`, `toListId`, and `createdAt`.
+- **`PATCH /cards/:id/move`** — rewritten as a single atomic Prisma transaction: the card update and ActivityEvent creation either both succeed or both roll back.
+- **`GET /boards/:id/activity`** — authenticated endpoint; returns all ActivityEvents for a board in reverse chronological order, each enriched with `actorName`, `cardTitle`, `fromListName`, and `toListName` via a single `include` query (no N+1).
+- **`GET /boards/:id/activity/preview`** — same response shape, no auth required (for testing).
+- **Repository layer** (`src/repositories/`) — all Prisma access extracted from route handlers. Routes contain only HTTP logic; repositories own all data access.
+- **Shared auth** (`src/auth.ts`) — single `verifyToken` reading `JWT_SECRET` from env; eliminates the copy-pasted hardcoded-secret anti-pattern.
+
+See `docs/decisions.md` for architecture decision records.
+
+---
+
 ## Your instructions are in START.md
 
 Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
@@ -18,6 +33,7 @@ npm install
 npm run db:push   # creates the SQLite database
 npm run dev       # starts on http://localhost:3000
 npm test          # run tests
+npm run test:coverage  # run tests with coverage report
 ```
 
 ---
