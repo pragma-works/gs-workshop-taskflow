@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "3d303ee",
+    "commit": "b923f36",
     "branch": "participant/P034",
-    "timestamp": "2026-04-10T21:06:31.799Z",
+    "timestamp": "2026-04-10T21:18:34.875Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -21,10 +21,10 @@
     "verifiable": {
       "score": 1,
       "max": 2,
-      "details": "Tests: 5 passed, 0 failed | Coverage: 12.3%",
-      "testsPassed": 5,
+      "details": "Tests: 24 passed, 0 failed | Coverage: 30.6%",
+      "testsPassed": 24,
       "testsFailed": 0,
-      "coveragePct": 12.3
+      "coveragePct": 30.61
     },
     "defended": {
       "score": 1,
@@ -34,8 +34,8 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 25/25 (100%) | Decision log: present",
-      "conventionalPct": 1,
+      "details": "Conventional commits: 26/27 (96%) | Decision log: present",
+      "conventionalPct": 0.9629629629629629,
       "hasDecisionLog": true
     },
     "composable": {
@@ -66,15 +66,15 @@
     "q3": "still figuring it out"
   },
   "external_metrics": {
-    "tscErrors": 0,
+    "tscErrors": 2,
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 5.5,
+    "duplicatePct": 6.85,
     "branchCount": 20,
-    "testCoverage": 12.3,
-    "testCount": 5,
+    "testCoverage": 30.61,
+    "testCount": 24,
     "depCount": 4
   }
 }
