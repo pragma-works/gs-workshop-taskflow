@@ -3,3 +3,5 @@ dist/
 *.db
 *.db-journal
 .env
+.score-coverage/
+.score-test-report.json
