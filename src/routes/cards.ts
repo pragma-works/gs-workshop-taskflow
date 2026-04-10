@@ -1,18 +1,8 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
 import prisma from '../db'
+import { verifyToken } from '../auth'
 
 const router = Router()
-
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
 
 // GET /cards/:id
 router.get('/:id', async (req: Request, res: Response) => {
@@ -76,17 +66,30 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
     return
   }
 
-  // ANTI-PATTERN: no ownership/membership check before moving
-
   const fromListId = card.listId
+  const [fromList, toList] = await Promise.all([
+    prisma.list.findUnique({ where: { id: fromListId } }),
+    prisma.list.findUnique({ where: { id: targetListId } }),
+  ])
+  if (!toList) {
+    res.status(400).json({ error: 'Target list not found' })
+    return
+  }
 
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
+  const payload = JSON.stringify({
+    cardTitle:    card.title,
+    fromListId,
+    fromListName: fromList?.name ?? String(fromListId),
+    toListId:     targetListId,
+    toListName:   toList.name,
+  })
 
-  // Log the move — in a separate write, outside any transaction
-  // (This is also where participants discover the desync risk)
-  console.log(`Card ${cardId} moved from list ${fromListId} to ${targetListId} by user ${userId}`)
+  await prisma.$transaction([
+    prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } }),
+    prisma.activityEvent.create({
+      data: { boardId: toList.boardId, cardId, userId, type: 'card_moved', payload },
+    }),
+  ])
 
   res.json({ ok: true })
 })

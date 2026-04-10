@@ -10,22 +10,24 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
+  id           Int             @id @default(autoincrement())
+  email        String          @unique
   password     String
   name         String
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime        @default(now())
   boards       BoardMember[]
-  cards        Card[]        @relation("assignee")
+  cards        Card[]          @relation("assignee")
   comments     Comment[]
+  activities   ActivityEvent[] @relation("actor")
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
-  name      String
-  createdAt DateTime      @default(now())
-  members   BoardMember[]
-  lists     List[]
+  id         Int             @id @default(autoincrement())
+  name       String
+  createdAt  DateTime        @default(now())
+  members    BoardMember[]
+  lists      List[]
+  activities ActivityEvent[]
 }
 
 model BoardMember {
@@ -48,18 +50,19 @@ model List {
 }
 
 model Card {
-  id          Int       @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   title       String
   description String?
   position    Int
   dueDate     DateTime?
   listId      Int
   assigneeId  Int?
-  createdAt   DateTime  @default(now())
-  list        List      @relation(fields: [listId], references: [id])
-  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
+  createdAt   DateTime        @default(now())
+  list        List            @relation(fields: [listId], references: [id])
+  assignee    User?           @relation("assignee", fields: [assigneeId], references: [id])
   comments    Comment[]
   labels      CardLabel[]
+  activities  ActivityEvent[]
 }
 
 model Label {
@@ -86,4 +89,17 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int
+  userId    Int
+  type      String   // "card_moved"
+  payload   String   // JSON: { fromListId, fromListName, toListId, toListName, cardTitle }
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id])
+  card      Card     @relation(fields: [cardId], references: [id])
+  actor     User     @relation("actor", fields: [userId], references: [id])
 }

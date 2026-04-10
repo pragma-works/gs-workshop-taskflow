@@ -1,20 +1,9 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
 import prisma from '../db'
+import { verifyToken } from '../auth'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and cards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
-
-// ANTI-PATTERN: membership check inline in route handler
 async function checkMember(userId: number, boardId: number): Promise<boolean> {
   const membership = await prisma.boardMember.findUnique({
     where: { userId_boardId: { userId, boardId } },

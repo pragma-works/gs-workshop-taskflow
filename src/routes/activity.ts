@@ -1,10 +1,44 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
+import prisma from '../db'
+import { verifyToken } from '../auth'
 
-const router = Router()
+const router = Router({ mergeParams: true })
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+// GET /boards/:id/activity — chronological feed of card moves for a board
+router.get('/', async (req: Request, res: Response) => {
+  let userId: number
+  try {
+    userId = verifyToken(req)
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  const boardId = parseInt(req.params.id)
+
+  const membership = await prisma.boardMember.findUnique({
+    where: { userId_boardId: { userId, boardId } },
+  })
+  if (!membership) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
+  const events = await prisma.activityEvent.findMany({
+    where: { boardId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: {
+      id:        true,
+      type:      true,
+      payload:   true,
+      createdAt: true,
+      actor:     { select: { id: true, name: true } },
+      card:      { select: { id: true, title: true } },
+    },
+  })
+
+  res.json(events.map(e => ({ ...e, payload: JSON.parse(e.payload) })))
+})
 
 export default router
