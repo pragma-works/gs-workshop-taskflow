@@ -70,117 +70,120 @@ jobs:
         run: |
           mkdir -p /tmp/hurl
 
-          cat > /tmp/hurl/executable.hurl << 'HURL_EOF'
-# Test 1 — POST /users/login returns {token} (non-empty string)
-POST http://localhost:3001/users/login
-Content-Type: application/json
-{
-    "email": "alice@test.com",
-    "password": "password123"
-}
+          cat <<'HURL_EOF' > /tmp/hurl/executable.hurl
+          # Test 1 — POST /users/login returns {token} (non-empty string)
+          POST http://localhost:3001/users/login
+          Content-Type: application/json
+          {
+            "email": "alice@test.com",
+            "password": "password123"
+          }
 
-HTTP 200
-[Captures]
-auth_token: jsonpath "$.token"
-[Asserts]
-jsonpath "$.token" isString
-jsonpath "$.token" != ""
-
-
-# Test 2 — POST /cards/1/move returns 2xx (authenticated)
-POST http://localhost:3001/cards/1/move
-Content-Type: application/json
-Authorization: Bearer {{auth_token}}
-{
-    "targetListId": 2
-}
-
-HTTP *
-[Asserts]
-status >= 200
-status < 300
+          HTTP 200
+          [Captures]
+          auth_token: jsonpath "$.token"
+          [Asserts]
+          jsonpath "$.token" isString
+          jsonpath "$.token" != ""
 
 
-# Test 3 — GET /boards/1/activity/preview returns an array (no auth required)
-GET http://localhost:3001/boards/1/activity/preview
+          # Test 2 — POST /cards/1/move returns 2xx (authenticated)
+          PATCH http://localhost:3001/cards/1/move
+          Content-Type: application/json
+          Authorization: Bearer {{auth_token}}
+          {
+            "targetListId": 2,
+            "position": 0
+          }
 
-HTTP 200
-[Asserts]
-jsonpath "$" isCollection
-HURL_EOF
-
-          cat > /tmp/hurl/composable.hurl << 'HURL_EOF'
-# Setup — login as alice
-POST http://localhost:3001/users/login
-Content-Type: application/json
-{
-    "email": "alice@test.com",
-    "password": "password123"
-}
-
-HTTP 200
-[Captures]
-alice_token: jsonpath "$.token"
+          HTTP *
+          [Asserts]
+          status >= 200
+          status < 300
 
 
-# Setup — move a card to generate an activity event
-POST http://localhost:3001/cards/1/move
-Content-Type: application/json
-Authorization: Bearer {{alice_token}}
-{
-    "targetListId": 2
-}
+          # Test 3 — GET /boards/1/activity/preview returns an array (no auth required)
+          GET http://localhost:3001/boards/1/activity/preview
 
-HTTP *
-[Asserts]
-status >= 200
-status < 300
+          HTTP 200
+          [Asserts]
+          jsonpath "$" isCollection
+          HURL_EOF
 
+          cat <<'HURL_EOF' > /tmp/hurl/composable.hurl
+          # Setup — login as alice
+          POST http://localhost:3001/users/login
+          Content-Type: application/json
+          {
+            "email": "alice@test.com",
+            "password": "password123"
+          }
 
-# Test 1 — GET /boards/1/activity/preview events have correct shape
-# Expected fields per event: id, boardId, actorName, eventType, cardTitle, timestamp
-GET http://localhost:3001/boards/1/activity/preview
-
-HTTP 200
-[Asserts]
-jsonpath "$" isCollection
-jsonpath "$[0].id" isInteger
-jsonpath "$[0].boardId" isInteger
-jsonpath "$[0].actorName" isString
-jsonpath "$[0].eventType" isString
-jsonpath "$[0].cardTitle" isString
-jsonpath "$[0].timestamp" isString
+          HTTP 200
+          [Captures]
+          alice_token: jsonpath "$.token"
 
 
-# Test 2 — GET /boards/1/activity without Authorization returns 401
-GET http://localhost:3001/boards/1/activity
+          # Setup — move a card to generate an activity event
+          PATCH http://localhost:3001/cards/1/move
+          Content-Type: application/json
+          Authorization: Bearer {{alice_token}}
+          {
+            "targetListId": 2,
+            "position": 0
+          }
 
-HTTP *
-[Asserts]
-status == 401
-
-
-# Setup — move again to guarantee a fresh card_moved event for atomicity check
-POST http://localhost:3001/cards/1/move
-Content-Type: application/json
-Authorization: Bearer {{alice_token}}
-{
-    "targetListId": 3
-}
-
-HTTP *
-[Asserts]
-status >= 200
-status < 300
+          HTTP *
+          [Asserts]
+          status >= 200
+          status < 300
 
 
-# Test 3 — GET /boards/1/activity/preview includes at least one card_moved event
-GET http://localhost:3001/boards/1/activity/preview
+          # Test 1 — GET /boards/1/activity/preview events have correct shape
+          # Expected fields per event: id, boardId, actorName, eventType, cardTitle, timestamp
+          GET http://localhost:3001/boards/1/activity/preview
 
-HTTP 200
-[Asserts]
-jsonpath "$[*].eventType" includes "card_moved"
-HURL_EOF
+          HTTP 200
+          [Asserts]
+          jsonpath "$" isCollection
+          jsonpath "$[0].id" isInteger
+          jsonpath "$[0].boardId" isInteger
+          jsonpath "$[0].actorName" isString
+          jsonpath "$[0].eventType" isString
+          jsonpath "$[0].cardTitle" isString
+          jsonpath "$[0].timestamp" isString
+
+
+          # Test 2 — GET /boards/1/activity without Authorization returns 401
+          GET http://localhost:3001/boards/1/activity
+
+          HTTP *
+          [Asserts]
+          status == 401
+
+
+          # Setup — move again to guarantee a fresh card_moved event for atomicity check
+          PATCH http://localhost:3001/cards/1/move
+          Content-Type: application/json
+          Authorization: Bearer {{alice_token}}
+          {
+            "targetListId": 3,
+            "position": 0
+          }
+
+          HTTP *
+          [Asserts]
+          status >= 200
+          status < 300
+
+
+          # Test 3 — GET /boards/1/activity/preview includes at least one card_moved event
+          GET http://localhost:3001/boards/1/activity/preview
+
+          HTTP 200
+          [Asserts]
+          jsonpath "$[*].eventType" includes "card_moved"
+          HURL_EOF
 
       - name: Run Hurl live tests
         run: |
@@ -192,7 +195,7 @@ HURL_EOF
         env:
           GITHUB_SHA: ${{ github.sha }}
         run: |
-          node << 'NODE_EOF'
+          node <<'NODE_EOF'
           const fs = require('fs');
 
           function scoreHurl(reportDir) {
@@ -226,7 +229,7 @@ HURL_EOF
             interfaceFiles = parseInt(out, 10) || 0;
           } catch {}
           const eslintScore = interfaceFiles >= 3 ? 2 : interfaceFiles >= 1 ? 1 : 0;
-          const eslintErrors = 0; // no ESLint configured in taskflow
+          const eslintErrors = 0;
 
           // verifiable (0-2): taskflow has no vitest — proxy on test file count
           let testFiles = 0;
@@ -238,7 +241,6 @@ HURL_EOF
             ).trim();
             testFiles = parseInt(out, 10) || 0;
           } catch {}
-          const coverage = 0;
           const verifiableScore = testFiles >= 3 ? 2 : testFiles >= 1 ? 1 : 0;
 
           // bounded (0-2): direct Prisma calls outside repository/service layer
