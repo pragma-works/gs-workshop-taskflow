@@ -5,16 +5,15 @@ One sentence per question — no pressure to write more.
 
 ## What worked well?
 
-<!-- Replace with one sentence: what felt smooth or productive today? -->
+the CLI and instruction
 
 ## What slowed you down?
 
-<!-- Replace with one sentence: friction, confusion, or time sinks? -->
+the time and tokens that i had
 
 ## How did you handle git commits today?
 
-<!-- Replace with one of: typed commands manually / told the AI / mixed -->
-
+commands manually
 ## Anything surprising?
 
-<!-- Optional: anything the AI did or didn't do that you didn't expect? -->
+CLI y better for backend petitions and plugin is better for front

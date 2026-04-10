@@ -13,15 +13,14 @@ Complete this before your first code commit. Your answers are stored alongside y
 
 **Q1: How long have you been using AI coding tools?**
 
-Answer: <!-- replace with one of: less than 6 months / 6–18 months / 18+ months / never -->
-
+Answer: 18+ months
 **Q2: How frequently do you use AI in your coding workflow?**
 
-Answer: <!-- replace with one of: daily / weekly / occasionally / rarely or never -->
+Answer: daily
 
 **Q3: How would you rate your current AI workflow?**
 
-Answer: <!-- replace with one of: confident and systematic / still figuring it out / skeptical of AI tools -->
+Answer: still figuring it out
 
 ---
 
