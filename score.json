@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "40d4f81",
+    "commit": "f75b5f0",
     "branch": "participant/P010",
-    "timestamp": "2026-04-10T20:29:27.337Z",
+    "timestamp": "2026-04-10T21:00:13.607Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,20 +15,21 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "28 direct DB calls found — repository layer missing",
+      "details": "34 direct DB calls found — repository layer missing",
       "violations": [
+        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts"
       ]
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: 0.0%",
-      "testsPassed": 0,
+      "details": "Tests: 7 passed, 0 failed | Coverage: 23.2%",
+      "testsPassed": 7,
       "testsFailed": 0,
-      "coveragePct": 0
+      "coveragePct": 23.16
     },
     "defended": {
       "score": 1,
@@ -38,8 +39,8 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 24/25 (96%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 0.96,
+      "details": "Conventional commits: 26/27 (96%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.9629629629629629,
       "hasDecisionLog": false
     },
     "composable": {
@@ -53,7 +54,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 2,
+      "score": 3,
       "max": 8
     },
     "total_with_live_tests": {
@@ -75,10 +76,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
-    "testCoverage": 0,
-    "testCount": 0,
+    "duplicatePct": 5.87,
+    "branchCount": 26,
+    "testCoverage": 23.16,
+    "testCount": 7,
     "depCount": 4
   }
 }
