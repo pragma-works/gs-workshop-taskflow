@@ -1,0 +1,54 @@
+{
+  "rubric": "GS DX Experiment v1",
+  "commit": "98342b43e91e49c6cd58eddfd357c901d781acb2",
+  "scored_at": "2026-04-10T21:18:08.483Z",
+  "gs_scores": {
+    "defended": {
+      "score": 0,
+      "max": 2,
+      "details": "4 TypeScript error(s)"
+    },
+    "self_describing": {
+      "score": 2,
+      "max": 2,
+      "details": "7 files with interface/type definitions"
+    },
+    "verifiable": {
+      "score": 0,
+      "max": 2,
+      "details": "0 test file(s)"
+    },
+    "bounded": {
+      "score": 0,
+      "max": 2,
+      "details": "24 direct Prisma call(s) outside data layer"
+    },
+    "total_automated": {
+      "score": 2,
+      "max": 8
+    },
+    "executable": {
+      "score": 3,
+      "max": 3,
+      "details": "Live Hurl: 3/3"
+    },
+    "composable": {
+      "score": 3,
+      "max": 3,
+      "details": "Live Hurl: 3/3"
+    },
+    "total_with_live_tests": {
+      "score": 8,
+      "max": 14,
+      "details": "Automated 2/8 + Live 6/6"
+    }
+  },
+  "raw_metrics": {
+    "tscErrors": 4,
+    "eslintErrors": 0,
+    "testCoverage": 0,
+    "boundedViolations": 24,
+    "interfaceFiles": 7,
+    "testFiles": 0
+  }
+}
