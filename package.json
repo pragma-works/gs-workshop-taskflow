@@ -4,9 +4,9 @@
   "description": "Kanban task board API — workshop starting point",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "ts-node src/server.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/server.js",
     "db:push": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts",
     "test": "vitest run",
