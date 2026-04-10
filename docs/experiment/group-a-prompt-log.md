@@ -128,6 +128,7 @@ After completing the requested exercise and validating the README checks, an add
 - shared JWT configuration and token helpers were introduced
 - route handlers were slimmed down and delegated to service modules
 - global JSON error handling was added
+- typed request validation was added at the route boundary
 - user responses were sanitized to avoid exposing password hashes
 - authorization rules were tightened for board access and membership-sensitive operations
 - integration test helpers were extracted and the test suite was expanded
@@ -135,7 +136,7 @@ After completing the requested exercise and validating the README checks, an add
 
 ### Updated Metrics After Hardening
 
-- Automated tests: 7
+- Automated tests: 11
 - Direct Prisma calls remaining in production `src/routes`: 0
 - TypeScript type-check: passing
 - Application startup: passing
@@ -150,6 +151,17 @@ After completing the requested exercise and validating the README checks, an add
 - `docs/adr/0001-activity-event-persistence-and-atomic-card-move.md`
 - `docs/adr/0002-in-memory-sqlite-integration-tests.md`
 - `docs/adr/0003-thin-routes-shared-auth-and-global-error-handling.md`
+- `docs/adr/0004-request-validation-at-the-route-boundary.md`
+
+### Validation Coverage Added After Hardening
+
+- invalid registration payloads now return 400
+- invalid route parameters now return 400
+- invalid card movement payloads now return 400
+- invalid empty comments now return 400
+
+This made the API safer at the boundary and reduced the amount of invalid input reaching service and persistence logic.
+
 
 ### Final Internal Observation
 

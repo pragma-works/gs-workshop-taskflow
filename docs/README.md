@@ -15,6 +15,7 @@ This directory contains the live documentation for the workshop implementation a
 - `adr/0001-activity-event-persistence-and-atomic-card-move.md`: why activity is persisted as explicit domain events and why card move logging uses a transaction
 - `adr/0002-in-memory-sqlite-integration-tests.md`: why the current tests use in-memory SQLite integration tests instead of mocking Prisma
 - `adr/0003-thin-routes-shared-auth-and-global-error-handling.md`: why the route layer was slimmed down and shared infrastructure was introduced for auth and error handling
+- `adr/0004-request-validation-at-the-route-boundary.md`: why request validation now happens at the HTTP boundary using typed schemas
 
 ## Experiment Log
 

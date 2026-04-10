@@ -31,6 +31,7 @@ The application now includes:
 - shared token verification and token signing helpers
 - a reusable async route wrapper
 - a global JSON error handler
+- typed request validation at the route boundary
 
 ### Services
 
@@ -100,6 +101,9 @@ Covered scenarios:
 - forbidden access for non-members
 - sanitized register responses
 - sanitized user lookup responses
+- invalid request payload handling for key route inputs
+
+Current automated test count: 11.
 
 ## Remaining Structural Gaps
 
@@ -108,7 +112,6 @@ The following issues remain open:
 
 - Prisma is still used directly inside services rather than repositories
 - the Prisma client is still process-global
-- request payloads are not validated with a schema library
 - activity events are only written for card movement, not yet for comments or card creation
 - mutation testing is still pending
 - JWT configuration still uses a fallback secret when the environment variable is absent
@@ -122,3 +125,5 @@ The next engineering pass should aim for deeper modularity and stronger contract
 - remove fallback secrets from configuration for non-local environments
 - extend event generation to additional domain actions
 - add mutation testing once the domain logic is more isolated
+
+Request validation has now been introduced, so the next priority should shift toward repository extraction, stricter config rules, and deeper automated testing.

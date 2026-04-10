@@ -7,6 +7,7 @@ Scope: Review of the codebase after completing the workshop prompts and a first 
 
 The workshop feature is implemented and working.
 The codebase now supports persistent board activity events, an authenticated board activity feed, a preview endpoint, automated regression tests, shared auth/config/error handling, and a thinner route layer.
+The latest hardening step also added schema-based request validation at the HTTP boundary.
 
 ## What Was Added
 
@@ -19,6 +20,7 @@ The codebase now supports persistent board activity events, an authenticated boa
 - centralized JSON error handling
 - service modules for boards, cards, activity, and users
 - sanitized user responses
+- typed route-boundary request validation using Zod
 - repository-local experiment log and architecture documentation
 
 ## What Improved
@@ -50,6 +52,11 @@ JWT operations now flow through shared helpers instead of duplicated route-local
 
 Unhandled application and Prisma errors now pass through a global JSON error handler rather than default Express HTML responses.
 
+### Input Safety
+
+Route parameters and request bodies are now validated before business logic executes.
+This reduces accidental invalid state transitions and produces consistent 400 responses for malformed input.
+
 ### Query Discipline In The New Feature
 
 The activity feed endpoints avoid loop-based database querying and rely on relation loading.
@@ -60,13 +67,13 @@ The original anti-pattern list has been significantly reduced, but follow-up wor
 
 - configuration still allows a fallback JWT secret for local convenience
 - Prisma is still process-global and used directly in services
-- request body validation is still minimal
+- request validation does not yet cover every route and still lacks a shared DTO or contract layer
 - event generation is still incomplete beyond card movement
 - mutation testing is not yet in place
 
 ## Current Metrics
 
-- Automated tests: 7
+- Automated tests: 11
 - Direct `prisma.` usages in production `src/routes`: 0
 - Feature working: yes
 
@@ -78,4 +85,4 @@ Application startup and type-check validation were also re-run after the hardeni
 
 ## Recommendation
 
-The next phase should focus on request validation, repository extraction, broader authorization coverage, and mutation testing.
+The next phase should focus on repository extraction, broader authorization coverage, unit tests for services, and mutation testing.

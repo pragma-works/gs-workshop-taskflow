@@ -37,8 +37,12 @@ The current suite validates:
 - forbidden access for non-members
 - sanitized register responses
 - sanitized user lookup responses
+- invalid registration payload rejection
+- invalid route parameter rejection
+- invalid card movement payload rejection
+- invalid comment payload rejection
 
-Current automated test count: 7.
+Current automated test count: 11.
 
 ## Current Limitations
 
@@ -58,10 +62,10 @@ Recommended order for follow-up work:
 
 1. Add focused unit tests around card movement, board membership checks, and activity mapping logic.
 2. Expand integration coverage for boards, comments, and error handling.
-3. Introduce request validation and add tests for invalid payloads.
+3. Add unit tests around validation helpers and service-level rules.
 4. Add mutation testing once the unit and integration baseline is more complete.
 
 ## Mutation Testing Note
 
 Mutation testing is still a stated engineering goal for this workspace, but it was not introduced yet because the current coverage is still dominated by integration tests.
-It should be added after the service layer has dedicated unit tests and request validation is in place.
+It should be added after the service layer has dedicated unit tests and the current validation/service rules have direct unit coverage.
