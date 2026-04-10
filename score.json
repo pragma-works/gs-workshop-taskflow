@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "210cf92",
-    "branch": "participant/P054-taskflow-a",
-    "timestamp": "2026-04-10T21:07:36.042Z",
+    "commit": "3bb3fd2",
+    "branch": "participant/P054",
+    "timestamp": "2026-04-10T22:21:39.880Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -39,8 +39,8 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 24/25 (96%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 0.96,
+      "details": "Conventional commits: 26/29 (90%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.896551724137931,
       "hasDecisionLog": false
     },
     "composable": {
