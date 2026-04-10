@@ -1,68 +1,90 @@
-# taskflow — Workshop Project
+# taskflow — Activity Feed workshop solution
 
-A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
-move cards between them, and discuss work in comments.
+Taskflow is a Kanban board API built with **TypeScript**, **Express**, **Prisma**, **SQLite**, and **JWT**. Boards own lists, lists own cards, cards can be moved between columns, and users can discuss work through card comments. This branch completes the workshop ticket by adding a board **Activity Feed** and refactoring the original starter code so the API logic is no longer embedded directly in route handlers.
 
----
+## What was built
 
-## Your instructions are in START.md
+The API now records board activity for the two actions requested by the exercise:
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+- moving a card writes an `ActivityEvent` with action `card_moved`
+- adding a comment writes an `ActivityEvent` with action `comment_added`
+- `GET /boards/:id/activity` returns the full feed for authenticated board members
+- `GET /boards/:id/activity/preview` returns the latest 10 events without auth for smoke testing
 
----
+Events are returned newest first in the shape required by the ticket:
 
-## Setup
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "boardId": 2,
+      "cardId": 8,
+      "userId": 3,
+      "action": "card_moved",
+      "meta": {
+        "fromListId": 4,
+        "toListId": 5,
+        "actorName": "Alice",
+        "cardTitle": "Ship activity feed",
+        "fromListName": "Backlog",
+        "toListName": "Done"
+      },
+      "createdAt": "2026-04-10T20:00:00.000Z"
+    }
+  ]
+}
+```
+
+## Key fixes from the starter repo
+
+The original repository intentionally contained several anti-patterns for the workshop. Those were addressed as part of the implementation:
+
+- JWT signing and verification now use `JWT_SECRET` from the environment instead of a hardcoded secret
+- route handlers are thin and delegate to **services** and **repositories**
+- direct Prisma access was removed from route files
+- board and card reads avoid the original N+1 query patterns by loading related records through Prisma includes
+- card moves and comment creation write activity inside database transactions
+- user responses no longer expose password hashes
+- tests run against isolated SQLite databases so API behavior is exercised without mutating the development database
+
+## Architecture
+
+The app is now composed as:
+
+```text
+Express routes -> services -> repositories -> Prisma
+```
+
+This keeps HTTP concerns in the route layer, business rules in services, and persistence in repositories. The composition root lives in `src/app.ts`, while `src/index.ts` only starts the server.
+
+## Local setup
 
 ```bash
 npm install
-npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
-npm test          # run tests
+npm run db:push
+npm run db:seed
+npm run dev
 ```
 
----
+The server starts on `http://localhost:3001`.
 
-## How scoring works
+Required environment variables:
 
-Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
+```bash
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="change-me"
+PORT=3001
+```
 
-1. Checks out your code
-2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
-3. Writes the result to `score.json` on your branch (committed by the bot)
-4. Uploads it as a workflow artifact
+## Validation commands
 
-**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
+```bash
+npm test
+npm run test:coverage
+npm run build
+```
 
-The score is re-computed on every push, so the latest push always reflects your current state.
+## Workshop notes
 
----
-
-## What gets scored (automated, 8 pts)
-
-| Property | Pts | What earns it |
-|----------|-----|---------------|
-| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
-| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
-| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
-| **Bounded** | 2 | Zero direct `db.*` calls in route files |
-| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
-| **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors |
-
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
-
----
-
-## Scoring is blind
-
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
-
----
-
-## What good looks like
-
-- Cards belong to columns; columns belong to boards — correct ownership enforced
-- Moving a card to Done does not delete it
-- Comments are attached to cards, not boards
-- JWT secret comes from an env var, never hardcoded
-- Every endpoint has at least one test
+The project still follows the workshop flow described in `START.md`, but this branch now reflects the requested feature and the architecture cleanup needed for the scoring rules: bounded routes, executable contracts, and verifiable behavior through tests.
