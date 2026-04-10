@@ -6,4 +6,5 @@ dist/
 coverage/
 .score-coverage/
 .score-test-report.json
-score.json
+.stryker-tmp/
+reports/mutation/
