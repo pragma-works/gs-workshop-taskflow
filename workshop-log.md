@@ -348,6 +348,33 @@ number down; the prompt-only approach scores poorly on it by design.
 | `prisma.*` in routes | 53 |
 | Feature working | Yes |
 
+---
+
+## Post-submission: Recovery prompt (outside Group A rules)
+
+After the first push, the scoring bot returned 3/8 on automated checks:
+- Self-describing 0/1 — README not modified from template
+- Bounded 0/2 — 35 direct prisma calls in routes
+- Verifiable 1/2 — 10 tests pass but coverage only 19% (need ≥ 60%)
+- Defended 1/1 ✓
+- Auditable 1/2 — conventional commits OK, decision log missing
+
+This recovery phase is **outside the Group A prompt-only constraint**
+— the five PROMPT_CARDS.md prompts were already exhausted. To reach 8/8
+automated, one consolidated freehand prompt was sent covering all four
+gaps in one pass.
+
+### Prompt sent
+_(see below — single recovery prompt targeting all four scoring gaps)_
+
+### Actual result
+_(fill in after Copilot responds)_
+
+### Delta vs. expectation
+_(fill in after)_
+
+---
+
 ## One observation about the process
 The most interesting moment of the session was Prompt 5: the prompt
 explicitly said "use an in-memory SQLite database — do not call the

@@ -1,4 +1,4 @@
-# Workshop Intake — Participant PXXX
+# Workshop Intake — Participant P040
 
 Complete this before your first code commit. Your answers are stored alongside your code and are used only for research analysis.
 
@@ -7,7 +7,7 @@ Complete this before your first code commit. Your answers are stored alongside y
 > This session's code output and observation notes will be shared as **anonymised** research data.
 > Your name will never appear in published results.
 
-- [ ] I consent to participating in this study
+- [X] I consent to participating in this study
 
 ## Developer Profile
 
