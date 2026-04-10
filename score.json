@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "2922b52",
+    "commit": "222ff2d",
     "branch": "participant/P011",
-    "timestamp": "2026-04-10T21:13:01.943Z",
+    "timestamp": "2026-04-10T21:24:44.613Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,18 +15,18 @@
     "bounded": {
       "score": 1,
       "max": 2,
-      "details": "2 direct DB call(s) outside repository layer",
+      "details": "1 direct DB call(s) outside repository layer",
       "violations": [
-        "src/routes/activity.ts"
+        "src/__tests__/globalSetup.ts"
       ]
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
-      "testsPassed": 0,
+      "details": "Tests: 20 passed, 0 failed | Coverage: 42.1%",
+      "testsPassed": 20,
       "testsFailed": 0,
-      "coveragePct": null
+      "coveragePct": 42.13
     },
     "defended": {
       "score": 1,
@@ -36,7 +36,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 37/37 (100%) | Decision log: present",
+      "details": "Conventional commits: 40/40 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -51,7 +51,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 5,
+      "score": 6,
       "max": 8
     },
     "total_with_live_tests": {
@@ -73,10 +73,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 6.37,
-    "branchCount": 28,
-    "testCoverage": null,
-    "testCount": 0,
+    "duplicatePct": 6.3,
+    "branchCount": 29,
+    "testCoverage": 42.13,
+    "testCount": 20,
     "depCount": 4
   }
 }
