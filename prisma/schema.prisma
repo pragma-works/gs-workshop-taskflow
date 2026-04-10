@@ -10,22 +10,24 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  password     String
-  name         String
-  createdAt    DateTime      @default(now())
-  boards       BoardMember[]
-  cards        Card[]        @relation("assignee")
-  comments     Comment[]
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  password        String
+  name            String
+  createdAt       DateTime         @default(now())
+  boards          BoardMember[]
+  cards           Card[]           @relation("assignee")
+  comments        Comment[]
+  activityEvents  ActivityEvent[]
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
-  name      String
-  createdAt DateTime      @default(now())
-  members   BoardMember[]
-  lists     List[]
+  id              Int              @id @default(autoincrement())
+  name            String
+  createdAt       DateTime         @default(now())
+  members         BoardMember[]
+  lists           List[]
+  activityEvents  ActivityEvent[]
 }
 
 model BoardMember {
@@ -48,18 +50,19 @@ model List {
 }
 
 model Card {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  position    Int
-  dueDate     DateTime?
-  listId      Int
-  assigneeId  Int?
-  createdAt   DateTime  @default(now())
-  list        List      @relation(fields: [listId], references: [id])
-  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
-  comments    Comment[]
-  labels      CardLabel[]
+  id              Int              @id @default(autoincrement())
+  title           String
+  description     String?
+  position        Int
+  dueDate         DateTime?
+  listId          Int
+  assigneeId      Int?
+  createdAt       DateTime         @default(now())
+  list            List             @relation(fields: [listId], references: [id])
+  assignee        User?            @relation("assignee", fields: [assigneeId], references: [id])
+  comments        Comment[]
+  labels          CardLabel[]
+  activityEvents  ActivityEvent[]
 }
 
 model Label {
@@ -86,4 +89,17 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id         Int      @id @default(autoincrement())
+  type       String   // "card_move" | "comment"
+  boardId    Int
+  cardId     Int
+  userId     Int
+  meta       String?  // JSON: { fromListId, toListId, fromListName, toListName, cardTitle }
+  createdAt  DateTime @default(now())
+  board      Board    @relation(fields: [boardId], references: [id])
+  card       Card     @relation(fields: [cardId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
 }
