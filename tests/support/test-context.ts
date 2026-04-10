@@ -4,6 +4,7 @@ import path from 'path'
 
 import type { Express } from 'express'
 import type { PrismaClient } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 import { vi } from 'vitest'
 
 const temporaryDatabaseDirectory = path.join(process.cwd(), 'tests', 'tmp')
@@ -46,4 +47,8 @@ export async function createTestContext(name: string): Promise<TestContext> {
       vi.resetModules()
     },
   }
+}
+
+export function createAuthToken(userId: number): string {
+  return jwt.sign({ userId }, process.env.JWT_SECRET ?? 'test-secret', { expiresIn: '7d' })
 }
