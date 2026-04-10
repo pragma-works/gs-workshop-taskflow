@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "42b6418",
+    "commit": "eb112fc",
     "branch": "participant/P042",
-    "timestamp": "2026-04-10T21:09:47.703Z",
+    "timestamp": "2026-04-10T21:25:00.014Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -13,15 +13,10 @@
       "details": "README updated by participant (4367 chars)"
     },
     "bounded": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "32 direct DB calls found — repository layer missing",
-      "violations": [
-        "src/routes/activity.ts",
-        "src/routes/boards.ts",
-        "src/routes/cards.ts",
-        "src/routes/users.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
       "score": 0,
@@ -39,7 +34,7 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 25/25 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "details": "Conventional commits: 27/27 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
       "conventionalPct": 1,
       "hasDecisionLog": false
     },
@@ -54,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 3,
+      "score": 5,
       "max": 8
     },
     "total_with_live_tests": {
@@ -76,7 +71,7 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 5.71,
+    "duplicatePct": 10.81,
     "branchCount": 28,
     "testCoverage": null,
     "testCount": 0,
