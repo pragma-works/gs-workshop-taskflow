@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "e87fe9a",
+    "commit": "48c78ae",
     "branch": "participant/P030",
-    "timestamp": "2026-04-10T20:44:56.809Z",
+    "timestamp": "2026-04-10T22:03:12.596Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,20 +15,21 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "28 direct DB calls found — repository layer missing",
+      "details": "33 direct DB calls found — repository layer missing",
       "violations": [
+        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts"
       ]
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: 0.0%",
-      "testsPassed": 0,
+      "details": "Tests: 7 passed, 0 failed | Coverage: 17.0%",
+      "testsPassed": 7,
       "testsFailed": 0,
-      "coveragePct": 0
+      "coveragePct": 16.98
     },
     "defended": {
       "score": 1,
@@ -38,8 +39,8 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 24/24 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 1,
+      "details": "Conventional commits: 28/29 (97%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.9655172413793104,
       "hasDecisionLog": false
     },
     "composable": {
@@ -53,7 +54,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 2,
+      "score": 3,
       "max": 8
     },
     "total_with_live_tests": {
@@ -63,11 +64,11 @@
     }
   },
   "intake": {
-    "status": "consent_pending",
-    "consented": false,
-    "q1": null,
-    "q2": null,
-    "q3": null
+    "status": "complete",
+    "consented": true,
+    "q1": "18+ months",
+    "q2": "daily",
+    "q3": "confident and systematic"
   },
   "external_metrics": {
     "tscErrors": 0,
@@ -75,10 +76,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
-    "testCoverage": 0,
-    "testCount": 0,
+    "duplicatePct": 7.63,
+    "branchCount": 26,
+    "testCoverage": 16.98,
+    "testCount": 7,
     "depCount": 4
   }
 }
