@@ -1,16 +1,16 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "3c3be85",
+    "commit": "d6c3120",
     "branch": "participant/P013",
-    "timestamp": "2026-04-10T21:54:24.957Z",
+    "timestamp": "2026-04-10T22:16:41.398Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
       "score": 1,
       "max": 1,
-      "details": "README updated by participant (3050 chars)"
+      "details": "README updated by participant (5216 chars)"
     },
     "bounded": {
       "score": 2,
@@ -19,12 +19,12 @@
       "violations": []
     },
     "verifiable": {
-      "score": 2,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 39 passed, 0 failed | Coverage: 73.0%",
-      "testsPassed": 39,
+      "details": "Tests: 43 passed, 0 failed | Coverage: 53.7%",
+      "testsPassed": 43,
       "testsFailed": 0,
-      "coveragePct": 73
+      "coveragePct": 53.67
     },
     "defended": {
       "score": 1,
@@ -34,7 +34,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 35/35 (100%) | Decision log: present",
+      "details": "Conventional commits: 37/37 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -49,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 8,
+      "score": 7,
       "max": 8
     },
     "total_with_live_tests": {
@@ -73,8 +73,8 @@
     "auditHigh": 0,
     "duplicatePct": 0.7,
     "branchCount": 79,
-    "testCoverage": 73,
-    "testCount": 39,
+    "testCoverage": 53.67,
+    "testCount": 43,
     "depCount": 4
   }
 }
