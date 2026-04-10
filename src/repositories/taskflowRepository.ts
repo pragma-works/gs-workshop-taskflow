@@ -44,6 +44,19 @@ export async function isBoardMember(userId: number, boardId: number): Promise<bo
 }
 
 /**
+ * @param userId User ID.
+ * @param boardId Board ID.
+ * @returns True when the user is the board owner.
+ */
+export async function isBoardOwner(userId: number, boardId: number): Promise<boolean> {
+  const membership = await db.boardMember.findUnique({
+    where: { userId_boardId: { userId, boardId } },
+  })
+
+  return membership?.role === 'owner'
+}
+
+/**
  * @param boardId Board ID.
  * @returns Board lists/cards/comments/labels in one query.
  */
@@ -72,10 +85,12 @@ export function findBoardWithDetails(boardId: number) {
  * @param ownerId User ID that becomes owner.
  * @returns Created board.
  */
-export async function createBoardWithOwner(name: string, ownerId: number) {
-  const board = await db.board.create({ data: { name } })
-  await db.boardMember.create({ data: { userId: ownerId, boardId: board.id, role: 'owner' } })
-  return board
+export function createBoardWithOwner(name: string, ownerId: number) {
+  return db.$transaction(async (tx) => {
+    const board = await tx.board.create({ data: { name } })
+    await tx.boardMember.create({ data: { userId: ownerId, boardId: board.id, role: 'owner' } })
+    return board
+  })
 }
 
 /**
@@ -97,13 +112,6 @@ export function findBoardActivity(boardId: number, limit?: number) {
     orderBy: { createdAt: 'desc' },
     take: limit,
   })
-}
-
-/**
- * @param input New activity event payload.
- */
-export function createActivityEvent(input: ActivityEventCreateInput) {
-  return db.activityEvent.create({ data: input })
 }
 
 /**

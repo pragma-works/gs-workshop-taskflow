@@ -19,6 +19,7 @@ import {
   findUserByEmail,
   findUserById,
   isBoardMember,
+  isBoardOwner,
   moveCardAndLogEvent,
 } from '../repositories/taskflowRepository'
 
@@ -36,13 +37,13 @@ export function getBoardsForUser(userId: number) {
  * @returns Board payload with nested list/card/comment/label data.
  */
 export async function getBoardByIdForUser(userId: number, boardId: number) {
-  const board = await findBoardById(boardId)
-  if (!board) {
-    throw new HttpError(404, 'Board not found')
-  }
-
   const member = await isBoardMember(userId, boardId)
   if (!member) {
+    // Could be 403 or 404 — check existence to distinguish
+    const board = await findBoardById(boardId)
+    if (!board) {
+      throw new HttpError(404, 'Board not found')
+    }
     throw new HttpError(403, 'Not a board member')
   }
 
@@ -79,8 +80,8 @@ export function createBoardForUser(userId: number, name: string) {
  * @param memberId User to add as member.
  */
 export async function addMemberToBoard(userId: number, boardId: number, memberId: number) {
-  const member = await isBoardMember(userId, boardId)
-  if (!member) {
+  const isOwner = await isBoardOwner(userId, boardId)
+  if (!isOwner) {
     throw new HttpError(403, 'Not a board member')
   }
 

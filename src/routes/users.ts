@@ -1,26 +1,19 @@
 import { Router, Response } from 'express'
-import { HttpError } from '../errors/httpError'
+import { handleError, parseIntParam } from '../middleware/routeHelpers'
+import { validateBody } from '../middleware/validate'
 import { getUserProfile, loginUser, registerUser } from '../services/taskflowService'
 
 const router = Router()
 
-function parseUserId(value: string): number {
-  return Number.parseInt(value, 10)
-}
-
-function handleError(res: Response, error: unknown): void {
-  if (error instanceof HttpError) {
-    res.status(error.statusCode).json({ error: error.message })
-    return
-  }
-
-  res.status(500).json({ error: 'Internal server error' })
-}
-
 // POST /users/register
 router.post('/register', async (req, res: Response) => {
   try {
-    const user = await registerUser(req.body)
+    const body = validateBody<{ email: string; password: string; name: string }>(req.body, {
+      email: { type: 'string', min: 3, max: 320 },
+      password: { type: 'string', min: 8, max: 128 },
+      name: { type: 'string', min: 1, max: 100 },
+    })
+    const user = await registerUser(body)
     res.json(user)
   } catch (error: unknown) {
     handleError(res, error)
@@ -30,7 +23,11 @@ router.post('/register', async (req, res: Response) => {
 // POST /users/login
 router.post('/login', async (req, res: Response) => {
   try {
-    const payload = await loginUser(req.body)
+    const body = validateBody<{ email: string; password: string }>(req.body, {
+      email: { type: 'string', min: 1, max: 320 },
+      password: { type: 'string', min: 1, max: 128 },
+    })
+    const payload = await loginUser(body)
     res.json(payload)
   } catch (error: unknown) {
     handleError(res, error)
@@ -40,7 +37,7 @@ router.post('/login', async (req, res: Response) => {
 // GET /users/:id
 router.get('/:id', async (req, res: Response) => {
   try {
-    const user = await getUserProfile(parseUserId(req.params.id))
+    const user = await getUserProfile(parseIntParam(req.params.id))
     res.json(user)
   } catch (error: unknown) {
     handleError(res, error)

@@ -1,6 +1,8 @@
 import { Router, Response } from 'express'
 import { HttpError } from '../errors/httpError'
 import { AuthenticatedRequest, requireAuth } from '../middleware/auth'
+import { handleError, parseIntParam } from '../middleware/routeHelpers'
+import { validateBody } from '../middleware/validate'
 import {
   addCommentForUser,
   createCardForList,
@@ -11,23 +13,10 @@ import {
 
 const router = Router()
 
-function parseCardId(value: string): number {
-  return Number.parseInt(value, 10)
-}
-
-function handleError(res: Response, error: unknown): void {
-  if (error instanceof HttpError) {
-    res.status(error.statusCode).json({ error: error.message })
-    return
-  }
-
-  res.status(500).json({ error: 'Internal server error' })
-}
-
 // GET /cards/:id
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const card = await getCardById(parseCardId(req.params.id))
+    const card = await getCardById(parseIntParam(req.params.id))
     res.json(card)
   } catch (error: unknown) {
     handleError(res, error)
@@ -37,7 +26,13 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
 // POST /cards — create card
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const card = await createCardForList(req.body)
+    const body = validateBody<{ title: string; listId: number; description?: string; assigneeId?: number }>(req.body, {
+      title: { type: 'string', min: 1, max: 200 },
+      listId: { type: 'number', min: 1 },
+      description: { type: 'string', optional: true, max: 2000 },
+      assigneeId: { type: 'number', optional: true, min: 1 },
+    })
+    const card = await createCardForList(body)
     res.status(201).json(card)
   } catch (error: unknown) {
     handleError(res, error)
@@ -47,10 +42,14 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
 // POST /cards/:id/move — move card and write activity event atomically
 router.post('/:id/move', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const { targetListId, position } = validateBody<{ targetListId: number; position: number }>(req.body, {
+      targetListId: { type: 'number', min: 1 },
+      position: { type: 'number', min: 0 },
+    })
     await moveCardForUser(req.userId!, {
-      cardId: parseCardId(req.params.id),
-      targetListId: req.body.targetListId,
-      position: req.body.position,
+      cardId: parseIntParam(req.params.id),
+      targetListId: targetListId as unknown as number,
+      position: position as unknown as number,
     })
     res.json({ ok: true })
   } catch (error: unknown) {
@@ -61,10 +60,14 @@ router.post('/:id/move', requireAuth, async (req: AuthenticatedRequest, res: Res
 // Backward-compatible alias for previous method semantics.
 router.patch('/:id/move', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const { targetListId, position } = validateBody<{ targetListId: number; position: number }>(req.body, {
+      targetListId: { type: 'number', min: 1 },
+      position: { type: 'number', min: 0 },
+    })
     await moveCardForUser(req.userId!, {
-      cardId: parseCardId(req.params.id),
-      targetListId: req.body.targetListId,
-      position: req.body.position,
+      cardId: parseIntParam(req.params.id),
+      targetListId: targetListId as unknown as number,
+      position: position as unknown as number,
     })
     res.json({ ok: true })
   } catch (error: unknown) {
@@ -75,9 +78,12 @@ router.patch('/:id/move', requireAuth, async (req: AuthenticatedRequest, res: Re
 // POST /cards/:id/comments — add comment
 router.post('/:id/comments', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const { content } = validateBody<{ content: string }>(req.body, {
+      content: { type: 'string', min: 1, max: 5000 },
+    })
     const comment = await addCommentForUser(req.userId!, {
-      cardId: parseCardId(req.params.id),
-      content: req.body.content,
+      cardId: parseIntParam(req.params.id),
+      content,
     })
     res.status(201).json(comment)
   } catch (error: unknown) {
@@ -88,7 +94,7 @@ router.post('/:id/comments', requireAuth, async (req: AuthenticatedRequest, res:
 // DELETE /cards/:id
 router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    await deleteCardById(parseCardId(req.params.id))
+    await deleteCardById(parseIntParam(req.params.id))
     res.json({ ok: true })
   } catch (error: unknown) {
     handleError(res, error)

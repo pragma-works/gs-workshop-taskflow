@@ -1,6 +1,8 @@
 import { Router, Response } from 'express'
 import { HttpError } from '../errors/httpError'
 import { AuthenticatedRequest, requireAuth } from '../middleware/auth'
+import { handleError, parseIntParam } from '../middleware/routeHelpers'
+import { validateBody } from '../middleware/validate'
 import {
   addMemberToBoard,
   createBoardForUser,
@@ -11,19 +13,6 @@ import {
 } from '../services/taskflowService'
 
 const router = Router()
-
-function parseBoardId(value: string): number {
-  return Number.parseInt(value, 10)
-}
-
-function handleError(res: Response, error: unknown): void {
-  if (error instanceof HttpError) {
-    res.status(error.statusCode).json({ error: error.message })
-    return
-  }
-
-  res.status(500).json({ error: 'Internal server error' })
-}
 
 // GET /boards — list boards for current user
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -38,7 +27,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
 // GET /boards/:id — full board with lists, cards, comments
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const board = await getBoardByIdForUser(req.userId!, parseBoardId(req.params.id))
+    const board = await getBoardByIdForUser(req.userId!, parseIntParam(req.params.id))
     res.json(board)
   } catch (error: unknown) {
     handleError(res, error)
@@ -48,7 +37,7 @@ router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
 // GET /boards/:id/activity — full activity feed
 router.get('/:id/activity', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const payload = await getBoardActivityForUser(req.userId!, parseBoardId(req.params.id))
+    const payload = await getBoardActivityForUser(req.userId!, parseIntParam(req.params.id))
     res.json(payload)
   } catch (error: unknown) {
     handleError(res, error)
@@ -58,7 +47,7 @@ router.get('/:id/activity', requireAuth, async (req: AuthenticatedRequest, res: 
 // GET /boards/:id/activity/preview — public smoke endpoint
 router.get('/:id/activity/preview', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const payload = await getBoardActivityPreview(parseBoardId(req.params.id))
+    const payload = await getBoardActivityPreview(parseIntParam(req.params.id))
     res.json(payload)
   } catch (error: unknown) {
     handleError(res, error)
@@ -68,7 +57,10 @@ router.get('/:id/activity/preview', async (req: AuthenticatedRequest, res: Respo
 // POST /boards — create board
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const board = await createBoardForUser(req.userId!, req.body.name)
+    const { name } = validateBody<{ name: string }>(req.body, {
+      name: { type: 'string', min: 1, max: 120 },
+    })
+    const board = await createBoardForUser(req.userId!, name)
     res.status(201).json(board)
   } catch (error: unknown) {
     handleError(res, error)
@@ -78,7 +70,10 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
 // POST /boards/:id/members — add member
 router.post('/:id/members', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    await addMemberToBoard(req.userId!, parseBoardId(req.params.id), req.body.memberId)
+    const { memberId } = validateBody<{ memberId: number }>(req.body, {
+      memberId: { type: 'number', min: 1 },
+    })
+    await addMemberToBoard(req.userId!, parseIntParam(req.params.id), memberId as unknown as number)
     res.status(201).json({ ok: true })
   } catch (error: unknown) {
     handleError(res, error)

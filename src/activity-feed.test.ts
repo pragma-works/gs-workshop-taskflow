@@ -174,4 +174,81 @@ describe('Activity Feed', () => {
     expect(actions).toContain('card_moved')
     expect(actions).toContain('comment_added')
   })
+
+  it('returns 404 for activity feed on non-existent board', async () => {
+    const context = await seedCoreData()
+    const token = await login('owner@test.com')
+
+    const response = await request(app)
+      .get('/boards/99999/activity')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404 for preview feed on non-existent board', async () => {
+    await seedCoreData()
+
+    const response = await request(app).get('/boards/99999/activity/preview')
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 400 when moving card without required fields', async () => {
+    const context = await seedCoreData()
+    const token = await login('owner@test.com')
+
+    const response = await request(app)
+      .post(`/cards/${context.cardId}/move`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 401 when login credentials are wrong', async () => {
+    await seedCoreData()
+
+    const response = await request(app)
+      .post('/users/login')
+      .send({ email: 'owner@test.com', password: 'wrongpassword' })
+
+    expect(response.status).toBe(401)
+  })
+
+  it('returns 400 when commenting with empty content', async () => {
+    const context = await seedCoreData()
+    const token = await login('owner@test.com')
+
+    const response = await request(app)
+      .post(`/cards/${context.cardId}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: '' })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 400 when creating board without name', async () => {
+    await seedCoreData()
+    const token = await login('owner@test.com')
+
+    const response = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+
+    expect(response.status).toBe(400)
+  })
+
+  it('non-member cannot add members to board', async () => {
+    const context = await seedCoreData()
+    const outsiderToken = await login('outsider@test.com')
+
+    const response = await request(app)
+      .post(`/boards/${context.boardId}/members`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
+      .send({ memberId: context.ownerId })
+
+    expect(response.status).toBe(403)
+  })
 })

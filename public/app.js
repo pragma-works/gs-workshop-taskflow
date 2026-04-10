@@ -95,10 +95,46 @@ document.getElementById('load-board').addEventListener('click', async () => {
     const board = await api(`/boards/${boardId}`)
     boardView.textContent = jsonPretty(board)
     showToast('Detalle de board actualizado')
+
+    // Render a quick-reference cheat-sheet of IDs for move/comment forms
+    renderIdCheatsheet(board)
   } catch (error) {
     showToast(error.message, 'error')
   }
 })
+
+/**
+ * Render a concise ID reference table below the board JSON output.
+ * @param {object} board Board payload from API.
+ */
+function renderIdCheatsheet(board) {
+  const existing = document.getElementById('id-cheatsheet')
+  if (existing) existing.remove()
+
+  const container = document.createElement('div')
+  container.id = 'id-cheatsheet'
+  container.style.cssText = 'margin-top:10px;font-family:monospace;font-size:0.82rem;line-height:1.6'
+
+  const lists = board.lists || []
+  if (lists.length === 0) {
+    container.textContent = 'No hay listas en este board.'
+    boardView.after(container)
+    return
+  }
+
+  const rows = []
+  rows.push('<strong>IDs de referencia:</strong>')
+  lists.forEach((list) => {
+    rows.push(`  📋 List #${list.id} — ${list.name}`)
+    const cards = list.cards || []
+    cards.forEach((card) => {
+      rows.push(`     🃏 Card #${card.id} — ${card.title}`)
+    })
+  })
+
+  container.innerHTML = rows.join('<br>')
+  boardView.after(container)
+}
 
 document.getElementById('load-activity').addEventListener('click', async () => {
   try {
@@ -118,9 +154,8 @@ document.getElementById('load-preview').addEventListener('click', async () => {
     const boardId = Number(boardIdInput.value)
     if (!boardId) throw new Error('Board ID invalido')
 
-    const activity = await api(`/boards/${boardId}/activity/preview`, {
-      headers: {},
-    })
+    // Preview is public — api() adds auth automatically if a token is present
+    const activity = await api(`/boards/${boardId}/activity/preview`)
     activityView.textContent = jsonPretty(activity)
     showToast('Preview cargado')
   } catch (error) {
