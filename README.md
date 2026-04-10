@@ -5,9 +5,47 @@ move cards between them, and discuss work in comments.
 
 ---
 
-## Your instructions are in START.md
+## Activity Feed (PM-5214)
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+This ticket adds an **Activity Feed** so users can see what happened on a board.
+
+### New endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/boards/:id/activity` | Yes | All activity events for the board, newest first. 401/403/404. |
+| `GET` | `/boards/:id/activity/preview` | No | Last 10 events (for smoke testing). |
+
+### Modified endpoints
+
+| Method | Path | Change |
+|--------|------|--------|
+| `PATCH` | `/cards/:id/move` | Now atomically writes an `ActivityEvent` (`card_moved`) in the same Prisma transaction as the card move. Rolls back on failure. |
+| `POST` | `/cards/:id/comments` | Now atomically writes an `ActivityEvent` (`comment_added`) alongside the comment. |
+
+### Architecture changes
+
+- **Repository layer** (`src/repositories/`) — all `prisma.*` calls moved out of route handlers into dedicated repository modules (`boardRepository`, `cardRepository`, `userRepository`, `activityRepository`).
+- **Shared auth middleware** (`src/middleware/auth.ts`) — deduplicated `verifyToken` from 3 files into one. `JWT_SECRET` read from `process.env.JWT_SECRET`.
+- **N+1 queries fixed** — board detail and card detail now use Prisma `include` for single-query loads.
+- **Password no longer leaked** in register and get-user responses.
+
+### Schema addition
+
+```prisma
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  userId    Int
+  action    String
+  cardId    Int?
+  meta      String?
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+  card      Card?    @relation(fields: [cardId], references: [id])
+}
+```
 
 ---
 
@@ -15,47 +53,12 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 
 ```bash
 npm install
-npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
-npm test          # run tests
+cp .env.example .env          # set DATABASE_URL and JWT_SECRET
+npm run db:push               # creates the SQLite database
+npm run db:seed               # loads test data
+npm run dev                   # starts on http://localhost:3001
+npm test                      # run tests
 ```
-
----
-
-## How scoring works
-
-Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
-
-1. Checks out your code
-2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
-3. Writes the result to `score.json` on your branch (committed by the bot)
-4. Uploads it as a workflow artifact
-
-**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
-
-The score is re-computed on every push, so the latest push always reflects your current state.
-
----
-
-## What gets scored (automated, 8 pts)
-
-| Property | Pts | What earns it |
-|----------|-----|---------------|
-| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
-| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
-| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
-| **Bounded** | 2 | Zero direct `db.*` calls in route files |
-| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
-| **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors |
-
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
-
----
-
-## Scoring is blind
-
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
 
 ---
 
