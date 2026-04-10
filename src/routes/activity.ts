@@ -1,10 +1,31 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
+import { requireAuth, AuthRequest } from '../middleware/auth'
+import * as boardRepo from '../repositories/boardRepository'
+import * as activityRepo from '../repositories/activityRepository'
 
-const router = Router()
+const router = Router({ mergeParams: true })
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+// GET /boards/:id/activity — authenticated activity feed
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+  const userId  = (req as AuthRequest).userId
+  const boardId = parseInt(req.params.id)
+
+  const isMember = await boardRepo.isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
+  const events = await activityRepo.getActivityForBoard(boardId)
+  res.json(events)
+})
+
+// GET /boards/:id/activity/preview — no-auth endpoint for testing
+router.get('/preview', async (req: Request, res: Response) => {
+  const boardId = parseInt(req.params.id)
+  const events  = await activityRepo.getActivityForBoard(boardId)
+  res.json(events)
+})
 
 export default router
+
