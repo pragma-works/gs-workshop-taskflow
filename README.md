@@ -20,6 +20,18 @@ npm run dev       # starts on http://localhost:3000
 npm test          # run tests
 ```
 
+Set a JWT secret before running the API:
+
+```bash
+export JWT_SECRET="your-local-secret"
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:JWT_SECRET = "your-local-secret"
+```
+
 ---
 
 ## How scoring works
@@ -66,3 +78,21 @@ Executable and Composable are scored via hidden live tests after the session. Th
 - Comments are attached to cards, not boards
 - JWT secret comes from an env var, never hardcoded
 - Every endpoint has at least one test
+
+---
+
+## Architecture updates
+
+The project now uses a layered design:
+
+- Routes: HTTP request/response and status codes only
+- Services: business rules, ownership checks, and transaction workflows
+- Repositories: data access with Prisma
+- Middleware: shared auth token verification and global error formatting
+
+Implemented feature upgrades:
+
+- `ActivityEvent` model added to schema
+- `PATCH /cards/:id/move` now updates card + activity in one transaction
+- `GET /boards/:id/activity` and `GET /boards/:id/activity/preview` implemented
+- Activity feed events include actor and list/card names without query loops
