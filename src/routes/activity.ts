@@ -22,6 +22,46 @@ async function checkMember(userId: number, boardId: number): Promise<boolean> {
   return membership !== null
 }
 
+async function buildActivityFeed(boardId: number) {
+  const moveEvents = await prisma.activityEvent.findMany({
+    where: { boardId },
+    include: {
+      user: { select: { id: true, name: true } },
+      card: { select: { id: true, title: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const comments = await prisma.comment.findMany({
+    where: { card: { list: { boardId } } },
+    include: {
+      user: { select: { id: true, name: true } },
+      card: { select: { id: true, title: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const feed = [
+    ...moveEvents.map(e => ({
+      type: e.type,
+      createdAt: e.createdAt,
+      user: e.user,
+      card: e.card,
+      detail: e.meta ? JSON.parse(e.meta) : {},
+    })),
+    ...comments.map(c => ({
+      type: 'comment' as const,
+      createdAt: c.createdAt,
+      user: c.user,
+      card: c.card,
+      detail: { content: c.content },
+    })),
+  ]
+
+  feed.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  return feed
+}
+
 // GET /boards/:id/activity — chronological activity feed for a board (auth required)
 router.get('/:id/activity', async (req: Request, res: Response) => {
   let userId: number
@@ -45,55 +85,20 @@ router.get('/:id/activity', async (req: Request, res: Response) => {
     return
   }
 
-  // Fetch card_move events for this board
-  const moveEvents = await prisma.activityEvent.findMany({
-    where: { boardId },
-    include: {
-      user: { select: { id: true, name: true } },
-      card: { select: { id: true, title: true } },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
+  res.json(await buildActivityFeed(boardId))
+})
 
-  // Fetch all comments on cards belonging to this board
-  const comments = await prisma.comment.findMany({
-    where: {
-      card: {
-        list: { boardId },
-      },
-    },
-    include: {
-      user: { select: { id: true, name: true } },
-      card: { select: { id: true, title: true } },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
+// GET /boards/:id/activity/preview — no-auth testing endpoint
+router.get('/:id/activity/preview', async (req: Request, res: Response) => {
+  const boardId = parseInt(req.params.id)
 
-  // Normalise both into a unified shape
-  const feed = [
-    ...moveEvents.map(e => {
-      const meta = e.meta ? JSON.parse(e.meta) : {}
-      return {
-        type: e.type,
-        createdAt: e.createdAt,
-        user: e.user,
-        card: e.card,
-        detail: meta,
-      }
-    }),
-    ...comments.map(c => ({
-      type: 'comment' as const,
-      createdAt: c.createdAt,
-      user: c.user,
-      card: c.card,
-      detail: { content: c.content },
-    })),
-  ]
+  const board = await prisma.board.findUnique({ where: { id: boardId } })
+  if (!board) {
+    res.status(404).json({ error: 'Board not found' })
+    return
+  }
 
-  // Sort chronologically
-  feed.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-
-  res.json(feed)
+  res.json(await buildActivityFeed(boardId))
 })
 
 export default router

@@ -89,25 +89,25 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
     prisma.list.findUnique({ where: { id: targetListId } }),
   ])
 
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
-
-  await prisma.activityEvent.create({
-    data: {
-      type: 'card_move',
-      boardId,
-      cardId,
-      userId,
-      meta: JSON.stringify({
-        fromListId,
-        toListId: targetListId,
-        fromListName: fromList?.name,
-        toListName: toList?.name,
-        cardTitle: card.title,
-      }),
-    },
-  })
+  // Atomic: card update + activity event in a single transaction
+  await prisma.$transaction([
+    prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } }),
+    prisma.activityEvent.create({
+      data: {
+        type: 'card_move',
+        boardId,
+        cardId,
+        userId,
+        meta: JSON.stringify({
+          fromListId,
+          toListId: targetListId,
+          fromListName: fromList?.name,
+          toListName: toList?.name,
+          cardTitle: card.title,
+        }),
+      },
+    }),
+  ])
 
   res.json({ ok: true })
 })
