@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "e8e210b",
+    "commit": "7b4e14d",
     "branch": "participant/P017",
-    "timestamp": "2026-04-10T20:58:22.305Z",
+    "timestamp": "2026-04-10T21:01:32.680Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -38,8 +38,8 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 31/32 (97%) | Decision log: present",
-      "conventionalPct": 0.96875,
+      "details": "Conventional commits: 33/35 (94%) | Decision log: present",
+      "conventionalPct": 0.9428571428571428,
       "hasDecisionLog": true
     },
     "composable": {
@@ -65,9 +65,9 @@
   "intake": {
     "status": "consent_pending",
     "consented": false,
-    "q1": null,
-    "q2": null,
-    "q3": null
+    "q1": "6–18 months",
+    "q2": "occasionally",
+    "q3": "still figuring it out / skeptical of AI tools"
   },
   "external_metrics": {
     "tscErrors": 0,
