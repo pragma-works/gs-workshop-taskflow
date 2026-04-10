@@ -12,12 +12,13 @@ export async function getActivityForBoard(boardId: number) {
     },
   })
 
-  // Map to flat response shape as required by the API contract
-  return events.map(({ actor, card, fromList, toList, ...rest }) => ({
+  // Map to flat response shape matching the API contract (README spec)
+  return events.map(({ actor, card, fromList, toList, createdAt, ...rest }) => ({
     ...rest,
     actorName:    actor.name,
     cardTitle:    card?.title    ?? null,
     fromListName: fromList?.name ?? null,
     toListName:   toList?.name   ?? null,
+    timestamp:    createdAt,          // spec uses "timestamp", not "createdAt"
   }))
 }
