@@ -1,34 +1,30 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "4e6874c",
+    "commit": "1645557",
     "branch": "participant/P035",
-    "timestamp": "2026-04-10T20:43:18.599Z",
+    "timestamp": "2026-04-10T21:20:43.281Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
-      "score": 0,
+      "score": 1,
       "max": 1,
-      "details": "README not modified from template — update it to describe what you built"
+      "details": "README updated by participant (4001 chars)"
     },
     "bounded": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "28 direct DB calls found — repository layer missing",
-      "violations": [
-        "src/routes/boards.ts",
-        "src/routes/cards.ts",
-        "src/routes/users.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
-      "score": 0,
+      "score": 1,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: 0.0%",
-      "testsPassed": 0,
+      "details": "Tests: 4 passed, 0 failed | Coverage: 27.4%",
+      "testsPassed": 4,
       "testsFailed": 0,
-      "coveragePct": 0
+      "coveragePct": 27.39
     },
     "defended": {
       "score": 1,
@@ -38,8 +34,8 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 29/29 (100%) | Decision log: present",
-      "conventionalPct": 1,
+      "details": "Conventional commits: 34/36 (94%) | Decision log: present",
+      "conventionalPct": 0.9444444444444444,
       "hasDecisionLog": true
     },
     "composable": {
@@ -53,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 3,
+      "score": 7,
       "max": 8
     },
     "total_with_live_tests": {
@@ -63,11 +59,11 @@
     }
   },
   "intake": {
-    "status": "consent_pending",
-    "consented": false,
-    "q1": null,
-    "q2": null,
-    "q3": null
+    "status": "complete",
+    "consented": true,
+    "q1": "6–18 months",
+    "q2": "daily",
+    "q3": "still figuring it out"
   },
   "external_metrics": {
     "tscErrors": 0,
@@ -75,10 +71,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 7.4,
-    "branchCount": 17,
-    "testCoverage": 0,
-    "testCount": 0,
+    "duplicatePct": 6.15,
+    "branchCount": 28,
+    "testCoverage": 27.39,
+    "testCount": 4,
     "depCount": 4
   }
 }
