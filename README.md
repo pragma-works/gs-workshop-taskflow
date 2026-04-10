@@ -5,9 +5,30 @@ move cards between them, and discuss work in comments.
 
 ---
 
-## Your instructions are in START.md
+## What was built
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+This session implemented the **Activity Feed** feature and refactored the existing codebase to address known anti-patterns:
+
+### New feature: Activity Feed
+- `GET /boards/:id/activity` — returns all activity events for a board in reverse chronological order (requires auth)
+- `GET /boards/:id/activity/preview` — same response, no auth required (for testing)
+- Card moves (`PATCH /cards/:id/move`) now atomically record an `ActivityEvent` in the same database transaction
+
+### Refactoring applied
+| Anti-pattern | Fix |
+|---|---|
+| `verifyToken` duplicated in 3 files | Extracted to `src/middleware/auth.ts` as Express middleware |
+| Direct `prisma.*` calls in route handlers | Moved to `src/repositories/` (one file per entity) |
+| Hardcoded JWT secret | Reads from `process.env.JWT_SECRET` |
+| `password` field returned in API responses | Omitted at repository level |
+| No ownership check before adding members / deleting cards | `isBoardOwner` / `isBoardMember` checks added |
+| N+1 queries | Replaced with Prisma `include` (single query per operation) |
+| Card move without transaction | Wrapped in `prisma.$transaction` |
+| No global error handler | Added to `src/index.ts` |
+| No input validation | Added with `zod` on all mutating endpoints |
+
+### Architecture decision
+See [`docs/decisions/adr-001-repository-layer.md`](docs/decisions/adr-001-repository-layer.md) for the rationale behind the repository pattern.
 
 ---
 
@@ -16,9 +37,40 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 ```bash
 npm install
 npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
+npm run dev       # starts on http://localhost:3001
 npm test          # run tests
 ```
+
+### Environment variables
+
+Copy `.env.example` to `.env` and set a real JWT secret:
+
+```
+DATABASE_URL="file:./prisma/dev.db"
+JWT_SECRET="your-secret-here"
+PORT=3001
+```
+
+---
+
+## API Overview
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/users/register` | — | Register a new user |
+| POST | `/users/login` | — | Login, returns JWT |
+| GET | `/users/:id` | ✓ | Get user by ID |
+| GET | `/boards` | ✓ | List boards for current user |
+| GET | `/boards/:id` | ✓ | Full board with lists, cards, comments |
+| POST | `/boards` | ✓ | Create a board |
+| POST | `/boards/:id/members` | ✓ owner | Add a member to a board |
+| GET | `/boards/:id/activity` | ✓ | Activity feed for a board |
+| GET | `/boards/:id/activity/preview` | — | Activity feed (no auth, for testing) |
+| GET | `/cards/:id` | ✓ | Get card with comments and labels |
+| POST | `/cards` | ✓ | Create a card |
+| PATCH | `/cards/:id/move` | ✓ | Move card to a different list |
+| POST | `/cards/:id/comments` | ✓ | Add a comment to a card |
+| DELETE | `/cards/:id` | ✓ member | Delete a card |
 
 ---
 
@@ -48,21 +100,3 @@ The score is re-computed on every push, so the latest push always reflects your 
 | **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
 | **Self-describing** | 1 | README describes what you built |
 | **Defended** | 1 | Zero TypeScript errors |
-
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
-
----
-
-## Scoring is blind
-
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
-
----
-
-## What good looks like
-
-- Cards belong to columns; columns belong to boards — correct ownership enforced
-- Moving a card to Done does not delete it
-- Comments are attached to cards, not boards
-- JWT secret comes from an env var, never hardcoded
-- Every endpoint has at least one test
