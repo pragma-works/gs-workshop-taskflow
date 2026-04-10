@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "3bb3fd2",
+    "commit": "e3ef6d7",
     "branch": "participant/P054",
-    "timestamp": "2026-04-10T22:21:39.880Z",
+    "timestamp": "2026-04-10T22:49:10.366Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,8 +15,9 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "33 direct DB calls found — repository layer missing",
+      "details": "34 direct DB calls found — repository layer missing",
       "violations": [
+        "src/index.ts",
         "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
@@ -26,10 +27,10 @@
     "verifiable": {
       "score": 1,
       "max": 2,
-      "details": "Tests: 7 passed, 0 failed | Coverage: 23.1%",
-      "testsPassed": 7,
+      "details": "Tests: 70 passed, 0 failed | Coverage: 53.7%",
+      "testsPassed": 70,
       "testsFailed": 0,
-      "coveragePct": 23.14
+      "coveragePct": 53.74
     },
     "defended": {
       "score": 1,
@@ -39,8 +40,8 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 26/29 (90%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 0.896551724137931,
+      "details": "Conventional commits: 27/31 (87%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.8709677419354839,
       "hasDecisionLog": false
     },
     "composable": {
@@ -76,10 +77,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 5.97,
-    "branchCount": 26,
-    "testCoverage": 23.14,
-    "testCount": 7,
-    "depCount": 4
+    "duplicatePct": 9.04,
+    "branchCount": 49,
+    "testCoverage": 53.74,
+    "testCount": 70,
+    "depCount": 10
   }
 }
