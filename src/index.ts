@@ -12,9 +12,4 @@ app.use('/boards', boardsRouter)
 app.use('/boards', activityRouter)
 app.use('/cards',  cardsRouter)
 
-if (process.env.NODE_ENV !== 'test') {
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
-}
-
 export default app

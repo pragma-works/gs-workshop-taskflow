@@ -1,9 +1,5 @@
 import prisma from '../db'
 
-export async function findCardById(cardId: number) {
-  return prisma.card.findUnique({ where: { id: cardId } })
-}
-
 export async function findCardWithDetails(cardId: number) {
   return prisma.card.findUnique({
     where: { id: cardId },
