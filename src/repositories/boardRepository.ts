@@ -1,6 +1,7 @@
 import prisma from '../db'
+import { IBoardRepository } from '../types'
 
-export const boardRepository = {
+export const boardRepository: IBoardRepository = {
   async findBoardsByUserId(userId: number) {
     return prisma.board.findMany({
       where: { members: { some: { userId } } },

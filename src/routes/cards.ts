@@ -1,13 +1,13 @@
 import { Router, Response, NextFunction } from 'express'
-import { cardService } from '../services/cardService'
+import { getContainer } from '../container'
 import { authenticate } from '../middleware/auth'
-import { AuthRequest } from '../types'
+import { AuthRequest, BadRequestError } from '../types'
 
 const router = Router()
 
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const card = await cardService.getById(parseInt(req.params.id))
+    const card = await getContainer().cardService.getById(parseInt(req.params.id))
     res.json(card)
   } catch (err) {
     next(err)
@@ -17,29 +17,36 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: N
 router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { title, description, listId, assigneeId } = req.body
-    const card = await cardService.create({ title, description, listId, assigneeId })
+    if (!title || !listId) throw new BadRequestError('title and listId are required')
+    const card = await getContainer().cardService.create({ title, description, listId, assigneeId })
     res.status(201).json(card)
   } catch (err) {
     next(err)
   }
 })
 
-router.patch('/:id/move', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
+async function handleMove(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const cardId = parseInt(req.params.id)
-    const { targetListId, position } = req.body
-    const result = await cardService.moveCard(req.userId!, cardId, targetListId, position)
+    const targetListId = req.body.targetListId ?? req.body.columnId
+    const position = req.body.position ?? 0
+    if (!targetListId) throw new BadRequestError('targetListId or columnId is required')
+    const result = await getContainer().cardService.moveCard(req.userId!, cardId, targetListId, position)
     res.json({ ok: true, event: result.event })
   } catch (err) {
     next(err)
   }
-})
+}
+
+router.patch('/:id/move', authenticate, handleMove)
+router.post('/:id/move', authenticate, handleMove)
 
 router.post('/:id/comments', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const cardId = parseInt(req.params.id)
     const { content } = req.body
-    const result = await cardService.addComment(req.userId!, cardId, content)
+    if (!content) throw new BadRequestError('content is required')
+    const result = await getContainer().cardService.addComment(req.userId!, cardId, content)
     res.status(201).json(result.comment)
   } catch (err) {
     next(err)
@@ -49,7 +56,7 @@ router.post('/:id/comments', authenticate, async (req: AuthRequest, res: Respons
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const cardId = parseInt(req.params.id)
-    await cardService.delete(cardId)
+    await getContainer().cardService.delete(cardId)
     res.json({ ok: true })
   } catch (err) {
     next(err)

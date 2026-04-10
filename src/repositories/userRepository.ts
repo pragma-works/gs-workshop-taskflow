@@ -1,6 +1,7 @@
 import prisma from '../db'
+import { IUserRepository } from '../types'
 
-export const userRepository = {
+export const userRepository: IUserRepository = {
   async findByEmail(email: string) {
     return prisma.user.findUnique({ where: { email } })
   },

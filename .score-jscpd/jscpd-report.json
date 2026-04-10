@@ -1,0 +1,409 @@
+{
+  "statistics": {
+    "detectionDate": "2026-04-10T22:33:40.932Z",
+    "formats": {
+      "typescript": {
+        "sources": {
+          "src/types/index.ts": {
+            "lines": 98,
+            "tokens": 1312,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/users.test.ts": {
+            "lines": 81,
+            "tokens": 879,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/setup.ts": {
+            "lines": 60,
+            "tokens": 854,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/cards.test.ts": {
+            "lines": 148,
+            "tokens": 1683,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/boards.test.ts": {
+            "lines": 103,
+            "tokens": 1156,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/architecture.test.ts": {
+            "lines": 26,
+            "tokens": 340,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 12,
+            "duplicatedTokens": 212,
+            "percentage": 46.15,
+            "percentageTokens": 62.35,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/tests/activity.test.ts": {
+            "lines": 126,
+            "tokens": 1412,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/services/userService.ts": {
+            "lines": 35,
+            "tokens": 477,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/services/cardService.ts": {
+            "lines": 28,
+            "tokens": 353,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/services/boardService.ts": {
+            "lines": 29,
+            "tokens": 323,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/services/activityService.ts": {
+            "lines": 21,
+            "tokens": 246,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/users.ts": {
+            "lines": 38,
+            "tokens": 493,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/cards.ts": {
+            "lines": 65,
+            "tokens": 867,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/boards.ts": {
+            "lines": 48,
+            "tokens": 611,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/routes/activity.ts": {
+            "lines": 27,
+            "tokens": 327,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/userRepository.ts": {
+            "lines": 15,
+            "tokens": 183,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/cardRepository.ts": {
+            "lines": 109,
+            "tokens": 1262,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 16,
+            "duplicatedTokens": 210,
+            "percentage": 14.68,
+            "percentageTokens": 16.64,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/boardRepository.ts": {
+            "lines": 61,
+            "tokens": 666,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/repositories/activityRepository.ts": {
+            "lines": 15,
+            "tokens": 203,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/middleware/auth.ts": {
+            "lines": 20,
+            "tokens": 252,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/server.ts": {
+            "lines": 3,
+            "tokens": 50,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/index.ts": {
+            "lines": 27,
+            "tokens": 285,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/db.ts": {
+            "lines": 4,
+            "tokens": 34,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/container.ts": {
+            "lines": 60,
+            "tokens": 557,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "src/config.ts": {
+            "lines": 3,
+            "tokens": 49,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 1250,
+          "tokens": 14874,
+          "sources": 25,
+          "clones": 2,
+          "duplicatedLines": 14,
+          "duplicatedTokens": 211,
+          "percentage": 1.12,
+          "percentageTokens": 1.42,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 1250,
+      "tokens": 14874,
+      "sources": 25,
+      "clones": 2,
+      "duplicatedLines": 14,
+      "duplicatedTokens": 211,
+      "percentage": 1.12,
+      "percentageTokens": 1.42,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ", () => {\r\n    const routesDir = join(__dirname, '..', 'routes')\r\n    const files = readdirSync(routesDir).filter(f => f.endsWith('.ts'))\r\n\r\n    for (const file of files) {\r\n      const content = readFileSync(join(routesDir, file), 'utf8')\r\n      expect(content).not.toMatch(/jwt\\.verify/",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src\\tests\\architecture.test.ts",
+        "start": 17,
+        "end": 23,
+        "startLoc": {
+          "line": 17,
+          "column": 51,
+          "position": 206
+        },
+        "endLoc": {
+          "line": 23,
+          "column": 14,
+          "position": 312
+        }
+      },
+      "secondFile": {
+        "name": "src\\tests\\architecture.test.ts",
+        "start": 6,
+        "end": 12,
+        "startLoc": {
+          "line": 6,
+          "column": 40,
+          "position": 67
+        },
+        "endLoc": {
+          "line": 12,
+          "column": 33,
+          "position": 173
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": ", userId: number) {\r\n    return prisma.$transaction(async (tx) => {\r\n      const card = await tx.card.findUnique({\r\n        where: { id: cardId },\r\n        include: { list: true },\r\n      })\r\n      if (!card) throw new NotFoundError('Card not found')\r\n\r\n      const comment",
+      "tokens": 0,
+      "firstFile": {
+        "name": "src\\repositories\\cardRepository.ts",
+        "start": 85,
+        "end": 93,
+        "startLoc": {
+          "line": 85,
+          "column": 7,
+          "position": 1005
+        },
+        "endLoc": {
+          "line": 93,
+          "column": 8,
+          "position": 1110
+        }
+      },
+      "secondFile": {
+        "name": "src\\repositories\\cardRepository.ts",
+        "start": 55,
+        "end": 63,
+        "startLoc": {
+          "line": 55,
+          "column": 7,
+          "position": 691
+        },
+        "endLoc": {
+          "line": 63,
+          "column": 11,
+          "position": 796
+        }
+      }
+    }
+  ]
+}

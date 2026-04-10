@@ -1,6 +1,7 @@
 import prisma from '../db'
+import { ICardRepository, NotFoundError } from '../types'
 
-export const cardRepository = {
+export const cardRepository: ICardRepository = {
   async findById(id: number) {
     return prisma.card.findUnique({ where: { id } })
   },
@@ -29,13 +30,35 @@ export const cardRepository = {
     })
   },
 
-  async moveCard(cardId: number, targetListId: number, position: number, userId: number) {
+  async updateListAndPosition(cardId: number, listId: number, position: number) {
+    return prisma.card.update({
+      where: { id: cardId },
+      data: { listId, position },
+    })
+  },
+
+  async delete(id: number) {
+    await prisma.comment.deleteMany({ where: { cardId: id } })
+    await prisma.cardLabel.deleteMany({ where: { cardId: id } })
+    await prisma.activityEvent.deleteMany({ where: { cardId: id } })
+    await prisma.card.delete({ where: { id } })
+  },
+
+  async countByList(listId: number) {
+    return prisma.card.count({ where: { listId } })
+  },
+
+  async createComment(data: { content: string; cardId: number; userId: number }) {
+    return prisma.comment.create({ data })
+  },
+
+  async moveCardWithEvent(cardId: number, targetListId: number, position: number, userId: number) {
     return prisma.$transaction(async (tx) => {
       const card = await tx.card.findUnique({
         where: { id: cardId },
         include: { list: true },
       })
-      if (!card) return null
+      if (!card) throw new NotFoundError('Card not found')
 
       const fromListId = card.listId
       const boardId = card.list.boardId
@@ -59,13 +82,13 @@ export const cardRepository = {
     })
   },
 
-  async addComment(cardId: number, userId: number, content: string) {
+  async addCommentWithEvent(cardId: number, content: string, userId: number) {
     return prisma.$transaction(async (tx) => {
       const card = await tx.card.findUnique({
         where: { id: cardId },
         include: { list: true },
       })
-      if (!card) return null
+      if (!card) throw new NotFoundError('Card not found')
 
       const comment = await tx.comment.create({
         data: { content, cardId, userId },
@@ -83,12 +106,5 @@ export const cardRepository = {
 
       return { comment, event }
     })
-  },
-
-  async delete(id: number) {
-    await prisma.comment.deleteMany({ where: { cardId: id } })
-    await prisma.cardLabel.deleteMany({ where: { cardId: id } })
-    await prisma.activityEvent.deleteMany({ where: { cardId: id } })
-    await prisma.card.delete({ where: { id } })
   },
 }

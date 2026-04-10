@@ -1,14 +1,15 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { userService } from '../services/userService'
+import { getContainer } from '../container'
 import { authenticate } from '../middleware/auth'
-import { AuthRequest } from '../types'
+import { AuthRequest, BadRequestError } from '../types'
 
 const router = Router()
 
 router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, name } = req.body
-    const user = await userService.register(email, password, name)
+    if (!email || !password || !name) throw new BadRequestError('email, password, and name are required')
+    const user = await getContainer().userService.register(email, password, name)
     res.status(201).json(user)
   } catch (err) {
     next(err)
@@ -18,7 +19,8 @@ router.post('/register', async (req: Request, res: Response, next: NextFunction)
 router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body
-    const result = await userService.login(email, password)
+    if (!email || !password) throw new BadRequestError('email and password are required')
+    const result = await getContainer().userService.login(email, password)
     res.json(result)
   } catch (err) {
     next(err)
@@ -27,7 +29,7 @@ router.post('/login', async (req: Request, res: Response, next: NextFunction) =>
 
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const user = await userService.getById(parseInt(req.params.id))
+    const user = await getContainer().userService.getById(parseInt(req.params.id))
     res.json(user)
   } catch (err) {
     next(err)

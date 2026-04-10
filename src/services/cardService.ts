@@ -1,32 +1,29 @@
-import { cardRepository } from '../repositories/cardRepository'
-import { NotFoundError } from '../types'
+import { ICardRepository, IActivityRepository, ICardService, NotFoundError } from '../types'
 
-export const cardService = {
-  async getById(id: number) {
-    const card = await cardRepository.findByIdWithDetails(id)
-    if (!card) throw new NotFoundError('Card not found')
-    return card
-  },
+export function createCardService(cardRepo: ICardRepository, activityRepo: IActivityRepository): ICardService {
+  return {
+    async getById(id: number) {
+      const card = await cardRepo.findByIdWithDetails(id)
+      if (!card) throw new NotFoundError('Card not found')
+      return card
+    },
 
-  async create(data: { title: string; description?: string; listId: number; assigneeId?: number }) {
-    return cardRepository.create(data)
-  },
+    async create(data: { title: string; description?: string; listId: number; assigneeId?: number }) {
+      return cardRepo.create(data)
+    },
 
-  async moveCard(userId: number, cardId: number, targetListId: number, position: number) {
-    const result = await cardRepository.moveCard(cardId, targetListId, position, userId)
-    if (!result) throw new NotFoundError('Card not found')
-    return result
-  },
+    async moveCard(userId: number, cardId: number, targetListId: number, position: number) {
+      return cardRepo.moveCardWithEvent(cardId, targetListId, position, userId)
+    },
 
-  async addComment(userId: number, cardId: number, content: string) {
-    const result = await cardRepository.addComment(cardId, userId, content)
-    if (!result) throw new NotFoundError('Card not found')
-    return result
-  },
+    async addComment(userId: number, cardId: number, content: string) {
+      return cardRepo.addCommentWithEvent(cardId, content, userId)
+    },
 
-  async delete(cardId: number) {
-    const card = await cardRepository.findById(cardId)
-    if (!card) throw new NotFoundError('Card not found')
-    await cardRepository.delete(cardId)
-  },
+    async delete(cardId: number) {
+      const card = await cardRepo.findById(cardId)
+      if (!card) throw new NotFoundError('Card not found')
+      await cardRepo.delete(cardId)
+    },
+  }
 }

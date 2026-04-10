@@ -1,9 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express'
+import { initContainer } from './container'
 import boardsRouter from './routes/boards'
 import cardsRouter  from './routes/cards'
 import usersRouter  from './routes/users'
 import activityRouter from './routes/activity'
 import { AppError } from './types'
+
+initContainer()
 
 const app = express()
 app.use(express.json())
