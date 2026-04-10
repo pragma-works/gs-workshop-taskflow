@@ -1,16 +1,16 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "ecbf9ef",
+    "commit": "2fdcf27",
     "branch": "participant/P036",
-    "timestamp": "2026-04-10T21:22:21.139Z",
+    "timestamp": "2026-04-10T21:27:54.966Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
       "score": 1,
       "max": 1,
-      "details": "README updated by participant (2625 chars)"
+      "details": "README updated by participant (2555 chars)"
     },
     "bounded": {
       "score": 2,
@@ -34,7 +34,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 38/38 (100%) | Decision log: present",
+      "details": "Conventional commits: 40/40 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -71,7 +71,7 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": null,
+    "duplicatePct": 6.9,
     "branchCount": 16,
     "testCoverage": 90.47,
     "testCount": 34,
