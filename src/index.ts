@@ -18,6 +18,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+}
 
 export default app
