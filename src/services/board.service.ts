@@ -5,14 +5,14 @@ export async function listBoards(userId: number) {
 }
 
 export async function getBoard(boardId: number, userId: number) {
-  const membership = await boardRepo.findMembership(userId, boardId)
-  if (!membership) {
-    throw Object.assign(new Error('Not a board member'), { status: 403 })
-  }
-
   const board = await boardRepo.findBoardWithDetails(boardId)
   if (!board) {
     throw Object.assign(new Error('Board not found'), { status: 404 })
+  }
+
+  const membership = await boardRepo.findMembership(userId, boardId)
+  if (!membership) {
+    throw Object.assign(new Error('Not a board member'), { status: 403 })
   }
 
   return board

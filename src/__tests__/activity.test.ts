@@ -44,6 +44,13 @@ describe('GET /boards/:id/activity', () => {
     expect(res.body).toHaveProperty('events')
     expect(Array.isArray(res.body.events)).toBe(true)
   })
+
+  it('returns 500 for invalid board id', async () => {
+    const res = await request(app)
+      .get('/boards/abc/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(500)
+  })
 })
 
 describe('GET /boards/:id/activity/preview', () => {
@@ -62,6 +69,11 @@ describe('GET /boards/:id/activity/preview', () => {
     const res = await request(app).get('/boards/1/activity/preview')
     expect(res.status).toBe(200)
     expect(res.body.events.length).toBeLessThanOrEqual(10)
+  })
+
+  it('returns 500 for invalid board id', async () => {
+    const res = await request(app).get('/boards/abc/activity/preview')
+    expect(res.status).toBe(500)
   })
 })
 
@@ -94,6 +106,14 @@ describe('PATCH /cards/:id/move', () => {
       .set('Authorization', `Bearer ${aliceToken}`)
       .send({ targetListId: 2, position: 0 })
     expect(res.status).toBe(404)
+  })
+
+  it('returns 500 for invalid card id', async () => {
+    const res = await request(app)
+      .patch('/cards/abc/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 2, position: 0 })
+    expect(res.status).toBe(500)
   })
 })
 
@@ -134,6 +154,14 @@ describe('POST /cards/:id/comments', () => {
       .send({ content: 'no card' })
     expect(res.status).toBe(404)
   })
+
+  it('returns 500 for invalid card id', async () => {
+    const res = await request(app)
+      .post('/cards/abc/comments')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ content: 'bad id' })
+    expect(res.status).toBe(500)
+  })
 })
 
 describe('GET /boards', () => {
@@ -158,6 +186,13 @@ describe('GET /boards/:id', () => {
     expect(res.status).toBe(401)
   })
 
+  it('returns 404 for non-existent board', async () => {
+    const res = await request(app)
+      .get('/boards/999')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(404)
+  })
+
   it('returns 403 for non-member', async () => {
     const token = signToken(999)
     const res = await request(app)
@@ -172,6 +207,13 @@ describe('GET /boards/:id', () => {
       .set('Authorization', `Bearer ${aliceToken}`)
     expect(res.status).toBe(200)
     expect(res.body).toHaveProperty('lists')
+  })
+
+  it('returns 500 for invalid board id', async () => {
+    const res = await request(app)
+      .get('/boards/abc')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(500)
   })
 })
 
@@ -239,6 +281,13 @@ describe('GET /cards/:id', () => {
     expect(res.body).toHaveProperty('title')
     expect(res.body).toHaveProperty('comments')
     expect(res.body).toHaveProperty('labels')
+  })
+
+  it('returns 500 for invalid card id', async () => {
+    const res = await request(app)
+      .get('/cards/abc')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(500)
   })
 })
 
@@ -325,6 +374,13 @@ describe('POST /users/login', () => {
       .send({ email: 'nobody@test.com', password: 'pass' })
     expect(res.status).toBe(401)
   })
+
+  it('returns 500 for missing body fields', async () => {
+    const res = await request(app)
+      .post('/users/login')
+      .send({})
+    expect(res.status).toBe(500)
+  })
 })
 
 describe('GET /users/:id', () => {
@@ -338,5 +394,10 @@ describe('GET /users/:id', () => {
   it('returns 404 for non-existent user', async () => {
     const res = await request(app).get('/users/999')
     expect(res.status).toBe(404)
+  })
+
+  it('returns 500 for invalid user id', async () => {
+    const res = await request(app).get('/users/abc')
+    expect(res.status).toBe(500)
   })
 })
