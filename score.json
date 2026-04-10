@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "0f09e85",
+    "commit": "ab9f4c1",
     "branch": "participant/P029",
-    "timestamp": "2026-04-10T21:18:02.440Z",
+    "timestamp": "2026-04-10T21:20:20.389Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -13,12 +13,10 @@
       "details": "README updated by participant (3326 chars)"
     },
     "bounded": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "5 direct DB calls found — repository layer missing",
-      "violations": [
-        "src/services/card.service.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
       "score": 0,
@@ -36,7 +34,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 34/34 (100%) | Decision log: present",
+      "details": "Conventional commits: 36/36 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -51,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 4,
+      "score": 6,
       "max": 8
     },
     "total_with_live_tests": {
@@ -73,8 +71,8 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 3,
-    "branchCount": 50,
+    "duplicatePct": 2.87,
+    "branchCount": 54,
     "testCoverage": null,
     "testCount": 0,
     "depCount": 4
