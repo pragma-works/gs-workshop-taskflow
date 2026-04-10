@@ -1,10 +1,14 @@
-import { Router } from 'express'
+import { Request, Response, Router } from 'express'
 
 const router = Router()
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+router.get('/:id/activity', (req: Request, res: Response) => {
+  if (!req.headers.authorization) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  res.json({ events: [] })
+})
 
 export default router
