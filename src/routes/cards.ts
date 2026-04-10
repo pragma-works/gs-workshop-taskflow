@@ -1,29 +1,30 @@
-import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
+import { Router, Response } from 'express'
+import { z } from 'zod'
 import prisma from '../db'
+import { AuthRequest, requireAuth } from '../middleware/auth'
+import { validateBody, validateParams } from '../middleware/validation'
+import { cardService } from '../services/cardService'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
+const idParamSchema = z.object({ id: z.coerce.number().int().positive() })
+const createCardSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  listId: z.number().int().positive(),
+  assigneeId: z.number().int().positive().optional(),
+})
+const moveCardSchema = z.object({
+  targetListId: z.number().int().positive(),
+  position: z.number().int().min(0),
+})
+const createCommentSchema = z.object({ content: z.string().min(1) })
+
+router.use(requireAuth)
 
 // GET /cards/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
+router.get('/:id', validateParams(idParamSchema), async (req: AuthRequest, res: Response) => {
+  const card = await prisma.card.findUnique({ where: { id: Number(req.params.id) } })
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
@@ -40,14 +41,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 })
 
 // POST /cards — create card
-router.post('/', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
+router.post('/', validateBody(createCardSchema), async (req: AuthRequest, res: Response) => {
   const { title, description, listId, assigneeId } = req.body
   // ANTI-PATTERN: position not calculated — just appended with no ordering logic
   const count = await prisma.card.count({ where: { listId } })
@@ -58,63 +52,21 @@ router.post('/', async (req: Request, res: Response) => {
 })
 
 // PATCH /cards/:id/move — move card to different list
-router.patch('/:id/move', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+router.patch('/:id/move', validateParams(idParamSchema), validateBody(moveCardSchema), async (req: AuthRequest, res: Response) => {
+  const userId = req.userId as number
 
-  const cardId = parseInt(req.params.id)
+  const cardId = Number(req.params.id)
   const { targetListId, position } = req.body
 
   try {
-    // Find the card with its current list to get boardId
-    const card = await prisma.card.findUnique({
-      where: { id: cardId },
-      include: { list: true }
-    })
-    if (!card) {
-      res.status(404).json({ error: 'Card not found' })
+    const result = await cardService.moveCard({ cardId, targetListId, position, userId })
+
+    if (result.type === 'not_found') {
+      res.status(404).json({ error: result.message })
       return
     }
 
-    // Verify target list exists
-    const targetList = await prisma.list.findUnique({ where: { id: targetListId } })
-    if (!targetList) {
-      res.status(404).json({ error: 'Target list not found' })
-      return
-    }
-
-    const fromListId = card.listId
-    const boardId = card.list.boardId
-
-    // Atomic transaction: update card AND create activity event
-    const result = await prisma.$transaction(async (tx) => {
-      // Update card position
-      await tx.card.update({
-        where: { id: cardId },
-        data: { listId: targetListId, position }
-      })
-
-      // Create activity event
-      const event = await tx.activityEvent.create({
-        data: {
-          boardId,
-          actorId: userId,
-          eventType: 'card_moved',
-          cardId,
-          fromListId,
-          toListId: targetListId
-        }
-      })
-
-      return event
-    })
-
-    res.json({ ok: true, event: result })
+    res.json({ ok: true, event: result.event })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     res.status(500).json({ error: 'Move failed', details: message })
@@ -122,31 +74,18 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
 })
 
 // POST /cards/:id/comments — add comment
-router.post('/:id/comments', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+router.post('/:id/comments', validateParams(idParamSchema), validateBody(createCommentSchema), async (req: AuthRequest, res: Response) => {
+  const userId = req.userId as number
 
   const { content } = req.body
-  const cardId = parseInt(req.params.id)
+  const cardId = Number(req.params.id)
   const comment = await prisma.comment.create({ data: { content, cardId, userId } })
   res.status(201).json(comment)
 })
 
 // DELETE /cards/:id
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const cardId = parseInt(req.params.id)
+router.delete('/:id', validateParams(idParamSchema), async (req: AuthRequest, res: Response) => {
+  const cardId = Number(req.params.id)
   // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
   await prisma.card.delete({ where: { id: cardId } })
   res.json({ ok: true })

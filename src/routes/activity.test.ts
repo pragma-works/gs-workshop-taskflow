@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { PrismaClient } from '@prisma/client'
 import express, { Express } from 'express'
 import * as jwt from 'jsonwebtoken'
+import { config } from '../config'
 
 // Dynamic imports to avoid module resolution issues
 let app: Express
@@ -9,7 +10,7 @@ let prisma: PrismaClient
 
 // Helper to generate test token
 function generateToken(userId: number): string {
-  return jwt.sign({ userId }, 'super-secret-key-change-me', { expiresIn: '1h' })
+  return jwt.sign({ userId }, config.jwtSecret, { expiresIn: '1h' })
 }
 
 describe('Activity Feed', () => {
