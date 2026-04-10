@@ -4,10 +4,8 @@ import { PrismaCardRepository } from '../repositories/PrismaCardRepository'
 import { PrismaListRepository } from '../repositories/PrismaListRepository'
 import { PrismaUnitOfWork } from '../repositories/PrismaUnitOfWork'
 import { CardService } from '../services/CardService'
-import prisma from '../db'
 
-// Mounted at /cards in index.ts; all paths here are relative.
-const router = Router()
+const router    = Router()
 
 const cardRepo    = new PrismaCardRepository()
 const listRepo    = new PrismaListRepository()
@@ -17,10 +15,7 @@ const cardService = new CardService(cardRepo, listRepo, uow)
 // GET /cards/:id
 router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const card = await prisma.card.findUnique({
-      where:   { id: Number(req.params.id) },
-      include: { assignee: { select: { id: true, name: true, email: true } } },
-    })
+    const card = await cardRepo.findByIdWithAssignee(Number(req.params.id))
     if (!card) { res.status(404).json({ error: 'Card not found' }); return }
     res.json(card)
   } catch (err) {
@@ -50,7 +45,7 @@ router.patch('/:id/move', authenticate, async (req, res, next) => {
 // DELETE /cards/:id
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {
-    await prisma.card.delete({ where: { id: Number(req.params.id) } })
+    await cardRepo.delete(Number(req.params.id))
     res.status(204).send()
   } catch (err) {
     next(err)

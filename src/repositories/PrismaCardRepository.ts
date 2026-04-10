@@ -1,16 +1,14 @@
-import type { PrismaClient } from '@prisma/client'
 import prisma from '../db'
 import type {
   ICardRepository,
   CardRow,
+  CardWithAssigneeRow,
   CreatedCardRow,
   CreateCardInput,
   UpdateCardInput,
 } from './types'
 
 export class PrismaCardRepository implements ICardRepository {
-  // `client` accepts either the top-level PrismaClient or a Prisma transaction
-  // client so that this repository can participate in a UnitOfWork transaction.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private readonly client: any = prisma) {}
 
@@ -27,6 +25,13 @@ export class PrismaCardRepository implements ICardRepository {
     }) as Promise<CardRow | null>
   }
 
+  async findByIdWithAssignee(id: number): Promise<CardWithAssigneeRow | null> {
+    return this.client.card.findUnique({
+      where:   { id },
+      include: { assignee: { select: { id: true, name: true, email: true } } },
+    }) as Promise<CardWithAssigneeRow | null>
+  }
+
   async countInList(listId: number): Promise<number> {
     return this.client.card.count({ where: { listId } })
   }
@@ -37,5 +42,9 @@ export class PrismaCardRepository implements ICardRepository {
 
   async update(id: number, data: UpdateCardInput): Promise<void> {
     await this.client.card.update({ where: { id }, data })
+  }
+
+  async delete(id: number): Promise<void> {
+    await this.client.card.delete({ where: { id } })
   }
 }

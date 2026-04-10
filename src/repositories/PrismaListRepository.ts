@@ -5,7 +5,7 @@ export class PrismaListRepository implements IListRepository {
   async findById(id: number): Promise<ListRow | null> {
     return prisma.list.findUnique({
       where:  { id },
-      select: { id: true, name: true, boardId: true },
+      select: { id: true, name: true, boardId: true, position: true },
     })
   }
 }

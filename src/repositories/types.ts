@@ -1,4 +1,4 @@
-// ─── Entity row types (returned by repositories) ─────────────────────────────
+// ─── Entity row types ─────────────────────────────────────────────────────────
 
 export interface CardRow {
   id:       number
@@ -6,6 +6,17 @@ export interface CardRow {
   listId:   number
   position: number
   list:     { id: number; name: string; boardId: number }
+}
+
+export interface CardWithAssigneeRow {
+  id:          number
+  title:        string
+  listId:       number
+  position:     number
+  description:  string | null
+  assigneeId:   number | null
+  createdAt:    Date
+  assignee:     { id: number; name: string; email: string } | null
 }
 
 export interface CreatedCardRow {
@@ -19,9 +30,16 @@ export interface CreatedCardRow {
 }
 
 export interface ListRow {
-  id:      number
-  name:    string
-  boardId: number
+  id:       number
+  name:     string
+  boardId:  number
+  position: number
+}
+
+export interface LabelRow {
+  id:    number
+  name:  string
+  color: string
 }
 
 export interface CommentRow {
@@ -32,6 +50,49 @@ export interface CommentRow {
   createdAt: Date
 }
 
+export interface BoardRow {
+  id:        number
+  name:      string
+  createdAt: Date
+}
+
+export interface CardDetailRow {
+  id:          number
+  title:        string
+  listId:       number
+  position:     number
+  description:  string | null
+  assigneeId:   number | null
+  createdAt:    Date
+  comments:     CommentRow[]
+  labels:       LabelRow[]
+}
+
+export interface ListWithCardsRow extends ListRow {
+  cards: CardDetailRow[]
+}
+
+export interface BoardWithDetailsRow extends BoardRow {
+  lists: ListWithCardsRow[]
+}
+
+export interface BoardMemberRow {
+  boardId: number
+  userId:  number
+  role:    string
+}
+
+export interface PublicUserRow {
+  id:        number
+  email:     string
+  name:      string
+  createdAt: Date
+}
+
+export interface AuthUserRow extends PublicUserRow {
+  password: string
+}
+
 // ─── DTO returned by the API ──────────────────────────────────────────────────
 
 export interface ActivityEventDto {
@@ -39,7 +100,7 @@ export interface ActivityEventDto {
   boardId:      number
   actorId:      number
   actorName:    string
-  eventType:    string   // EventType enum value serialised to string in JSON
+  eventType:    string
   cardId:       number
   cardTitle:    string
   fromListName: string | null
@@ -53,7 +114,7 @@ export interface CreateActivityEventInput {
   boardId:      number
   cardId:       number
   userId:       number
-  eventType:    string   // accepts EventType enum value
+  eventType:    string
   cardTitle:    string
   fromListName?: string | null
   toListName?:  string | null
@@ -78,17 +139,20 @@ export interface CreateCommentInput {
   userId:  number
 }
 
+export interface CreateUserInput {
+  email:    string
+  password: string
+  name:     string
+}
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 export interface PaginationOptions {
-  /** Number of events to return. Capped at 100 by the application layer. */
   limit:  number
-  /** Zero-based offset for cursor-less pagination. */
   offset: number
 }
 
 // ─── Repository interfaces ────────────────────────────────────────────────────
-// Services depend on these — never on concrete Prisma types.
 
 export interface IActivityRepository {
   listForBoard(boardId: number, options: PaginationOptions): Promise<ActivityEventDto[]>
@@ -97,19 +161,35 @@ export interface IActivityRepository {
 
 export interface ICardRepository {
   findById(id: number): Promise<CardRow | null>
+  findByIdWithAssignee(id: number): Promise<CardWithAssigneeRow | null>
   countInList(listId: number): Promise<number>
   create(data: CreateCardInput): Promise<CreatedCardRow>
   update(id: number, data: UpdateCardInput): Promise<void>
+  delete(id: number): Promise<void>
 }
 
 export interface IListRepository {
   findById(id: number): Promise<ListRow | null>
 }
 
+export interface IBoardRepository {
+  findById(id: number): Promise<BoardRow | null>
+  findByIdWithDetails(id: number): Promise<BoardWithDetailsRow | null>
+  findByUserId(userId: number): Promise<BoardRow[]>
+  create(name: string): Promise<BoardRow>
+}
+
 export interface IBoardMemberRepository {
   isMember(userId: number, boardId: number): Promise<boolean>
+  addMember(userId: number, boardId: number, role: string): Promise<void>
 }
 
 export interface ICommentRepository {
   create(data: CreateCommentInput): Promise<CommentRow>
+}
+
+export interface IUserRepository {
+  findById(id: number): Promise<PublicUserRow | null>
+  findByEmail(email: string): Promise<AuthUserRow | null>
+  create(data: CreateUserInput): Promise<PublicUserRow>
 }
