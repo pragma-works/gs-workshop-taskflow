@@ -5,6 +5,33 @@ move cards between them, and discuss work in comments.
 
 ---
 
+## What we built
+
+### Activity Feed (PM-5214)
+
+We implemented a full **activity feed** feature on top of the existing Kanban API:
+
+- **`ActivityEvent` model** — Added to `prisma/schema.prisma` with relations to Board, User, Card, and List. Tracks who moved what card, from which list, to which list, and when.
+- **`PATCH /cards/:id/move` rewrite** — Card moves now happen inside a Prisma `$transaction`, atomically updating the card's list and creating an `ActivityEvent` in a single operation. If either write fails, both roll back — no orphaned state.
+- **`GET /boards/:id/activity`** — Authenticated endpoint returning all activity events for a board in reverse chronological order, enriched with `actorName`, `cardTitle`, `fromListName`, and `toListName`. Uses Prisma `include` to avoid N+1 queries (max 2 queries total).
+- **`GET /boards/:id/activity/preview`** — Same response shape but without authentication, for testing and demos.
+- **Integration tests** — 5 Vitest tests covering: 401 on missing auth, 403 for non-members, transactional card move with event creation, 404 rollback on invalid target list, and reverse chronological ordering on the preview endpoint.
+
+### Anti-patterns addressed
+- **No transaction on card move** → Fixed: Prisma `$transaction` wraps both writes
+- **No activity logging** → Fixed: `ActivityEvent` created atomically with every move
+- **N+1 on activity queries** → Avoided: single query with `include` for all relations
+- **Target list validation missing** → Fixed: 404 returned before transaction if list doesn't exist
+
+### Anti-patterns still present (known debt)
+- JWT secret hardcoded across 4 files (should come from `process.env.JWT_SECRET`)
+- `verifyToken()` duplicated in users.ts, boards.ts, cards.ts, activity.ts
+- Password hash exposed in `/users/register` and `GET /users/:id` responses
+- N+1 queries remain in `GET /boards/:id` and `GET /cards/:id` for labels
+- No ownership check on `DELETE /cards/:id` or `POST /boards/:id/members`
+
+---
+
 ## Your instructions are in START.md
 
 Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
