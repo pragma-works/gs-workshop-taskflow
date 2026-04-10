@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taskflow Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-a"></div>
+    <div class="bg-glow bg-glow-b"></div>
+
+    <header class="hero">
+      <h1>Taskflow Lab</h1>
+      <p>UI para probar login, tableros, feed de actividad, mover tarjetas y comentar.</p>
+    </header>
+
+    <main class="layout">
+      <section class="card panel-auth">
+        <h2>1) Login</h2>
+        <form id="login-form" class="stack">
+          <label>
+            Email
+            <input id="email" type="email" value="alice@test.com" required />
+          </label>
+          <label>
+            Password
+            <input id="password" type="password" value="password123" required />
+          </label>
+          <button type="submit">Iniciar Sesion</button>
+        </form>
+        <div id="auth-state" class="muted">Sin token</div>
+      </section>
+
+      <section class="card panel-boards">
+        <div class="row-between">
+          <h2>2) Tableros</h2>
+          <button id="load-boards">Cargar</button>
+        </div>
+        <div id="boards" class="chip-list"></div>
+      </section>
+
+      <section class="card panel-board-detail">
+        <div class="row-between">
+          <h2>3) Board Detalle</h2>
+          <button id="load-board">Refrescar</button>
+        </div>
+        <label>
+          Board ID
+          <input id="board-id" type="number" min="1" placeholder="Ej: 1" />
+        </label>
+        <pre id="board-view" class="console"></pre>
+      </section>
+
+      <section class="card panel-activity">
+        <div class="row-between">
+          <h2>4) Activity Feed</h2>
+          <div class="inline-actions">
+            <button id="load-activity">Privado</button>
+            <button id="load-preview">Preview</button>
+          </div>
+        </div>
+        <pre id="activity-view" class="console"></pre>
+      </section>
+
+      <section class="card panel-move">
+        <h2>5) Mover Tarjeta</h2>
+        <form id="move-form" class="stack">
+          <label>
+            Card ID
+            <input id="move-card-id" type="number" min="1" required />
+          </label>
+          <label>
+            Target List ID
+            <input id="target-list-id" type="number" min="1" required />
+          </label>
+          <label>
+            Position
+            <input id="move-position" type="number" min="0" value="0" required />
+          </label>
+          <button type="submit">Mover y registrar evento</button>
+        </form>
+      </section>
+
+      <section class="card panel-comment">
+        <h2>6) Agregar Comentario</h2>
+        <form id="comment-form" class="stack">
+          <label>
+            Card ID
+            <input id="comment-card-id" type="number" min="1" required />
+          </label>
+          <label>
+            Comentario
+            <textarea id="comment-content" rows="3" required>Comentario desde UI</textarea>
+          </label>
+          <button type="submit">Comentar y registrar evento</button>
+        </form>
+      </section>
+    </main>
+
+    <aside id="toast" class="toast"></aside>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

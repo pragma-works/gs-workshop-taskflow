@@ -11,6 +11,55 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 
 ---
 
+## Implemented in this repo (PM-5214)
+
+This workspace now includes an Activity Feed implementation with layered architecture:
+
+- `GET /boards/:id/activity` (auth required)
+	- Returns `{ events: [...] }` newest-first
+	- `401` unauthenticated
+	- `403` authenticated but not a board member
+	- `404` board not found
+- `GET /boards/:id/activity/preview` (public)
+	- Same response shape as above
+	- Limited to 10 latest events
+- `POST /cards/:id/move`
+	- Moves card and writes `card_moved` activity event atomically in one transaction
+- `POST /cards/:id/comments`
+	- Creates comment and writes `comment_added` activity event atomically in one transaction
+
+Additional refactors included:
+
+- Route handlers are thin and no longer perform direct Prisma calls.
+- Shared auth moved to middleware using `JWT_SECRET` from environment configuration.
+- N+1-heavy board detail loading replaced by include-based repository query.
+- User responses no longer expose password hashes.
+
+### Quick manual check
+
+1. Login:
+	 - `POST /users/login` with seeded credentials (for example `alice@test.com` / `password123`)
+2. Use token as `Authorization: Bearer <token>`
+3. Move a card and add a comment
+4. Read activity:
+	 - `GET /boards/:id/activity`
+	 - `GET /boards/:id/activity/preview`
+
+### Browser UI for manual testing
+
+You can now test Taskflow directly from a browser UI served by the same API process:
+
+1. Run `npm run dev`
+2. Open `http://localhost:3001`
+3. Use seeded credentials (`alice@test.com` / `password123`)
+4. Load boards, select a board ID, then test:
+	- board detail
+	- private/public activity feed
+	- move card
+	- add comment
+
+---
+
 ## Setup
 
 ```bash
