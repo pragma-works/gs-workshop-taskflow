@@ -8,6 +8,7 @@ Scope: Review of the codebase after completing the workshop prompts and a first 
 The workshop feature is implemented and working.
 The codebase now supports persistent board activity events, an authenticated board activity feed, a preview endpoint, automated regression tests, shared auth/config/error handling, and a thinner route layer.
 The latest hardening step also added schema-based request validation at the HTTP boundary.
+The latest hardening step after that introduced repositories, service-level unit tests, and baseline mutation testing.
 
 ## What Was Added
 
@@ -19,6 +20,7 @@ The latest hardening step also added schema-based request validation at the HTTP
 - shared auth and token signing utilities
 - centralized JSON error handling
 - service modules for boards, cards, activity, and users
+- repository modules for boards, cards, activity, and users
 - sanitized user responses
 - typed route-boundary request validation using Zod
 - repository-local experiment log and architecture documentation
@@ -43,6 +45,8 @@ This enabled meaningful integration tests against the API surface.
 Routes no longer orchestrate most database operations directly.
 That logic has been moved into service modules, which reduces controller complexity and lowers the direct Prisma usage in production route files.
 
+Services now delegate raw persistence access to repositories, creating a cleaner seam for unit tests and future persistence refactors.
+
 ### Security And Response Hygiene
 
 User routes no longer expose password hashes.
@@ -57,6 +61,11 @@ Unhandled application and Prisma errors now pass through a global JSON error han
 Route parameters and request bodies are now validated before business logic executes.
 This reduces accidental invalid state transitions and produces consistent 400 responses for malformed input.
 
+### Verifiability
+
+The codebase now has both integration tests and service-level unit tests.
+Mutation testing has also been introduced, which provides a stronger signal about which service behaviors are still weakly specified.
+
 ### Query Discipline In The New Feature
 
 The activity feed endpoints avoid loop-based database querying and rely on relation loading.
@@ -66,23 +75,25 @@ The activity feed endpoints avoid loop-based database querying and rely on relat
 The original anti-pattern list has been significantly reduced, but follow-up work still exists:
 
 - configuration still allows a fallback JWT secret for local convenience
-- Prisma is still process-global and used directly in services
+- Prisma is still process-global behind repositories
 - request validation does not yet cover every route and still lacks a shared DTO or contract layer
 - event generation is still incomplete beyond card movement
-- mutation testing is not yet in place
+- mutation testing is in place but the score is still low enough to justify more targeted unit coverage
 
 ## Current Metrics
 
-- Automated tests: 11
+- Automated tests: 21
 - Direct `prisma.` usages in production `src/routes`: 0
 - Feature working: yes
+- Current mutation score on service layer: 32.81
 
 ## Manual Verification Notes
 
 The feature was validated by logging in, moving a card, and confirming that the event appears in the preview feed.
 Rollback behavior was verified with an automated test that attempts to move a card to a non-existent list.
 Application startup and type-check validation were also re-run after the hardening refactor.
+Unit tests and a Stryker mutation campaign were also executed successfully.
 
 ## Recommendation
 
-The next phase should focus on repository extraction, broader authorization coverage, unit tests for services, and mutation testing.
+The next phase should focus on improving mutation resistance, broadening unit coverage, tightening configuration, and expanding event generation.

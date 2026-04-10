@@ -44,6 +44,19 @@ Use-case and query orchestration now live in dedicated service modules:
 
 These services still use Prisma directly, but they remove database orchestration from the route layer and create a better base for future repository extraction.
 
+### Repositories
+
+Persistence access now lives in repository modules that isolate Prisma operations from service-level decision making.
+
+Current repositories:
+
+- board repository
+- card repository
+- activity repository
+- user repository
+
+This is not yet a full DDD repository layer, but it provides a stable seam between business logic and database access.
+
 ## Implemented Activity Feed Flow
 
 ### Persistence Model
@@ -103,27 +116,31 @@ Covered scenarios:
 - sanitized user lookup responses
 - invalid request payload handling for key route inputs
 
-Current automated test count: 11.
+The codebase now also includes service-level unit tests for board, card, and user logic.
+
+Current automated test count: 21.
+
+Mutation testing has been introduced with Stryker and currently targets the service layer through the unit test suite.
 
 ## Remaining Structural Gaps
 
 The implementation now addresses the most critical route-level anti-patterns but does not yet complete the broader architecture goals.
 The following issues remain open:
 
-- Prisma is still used directly inside services rather than repositories
 - the Prisma client is still process-global
 - activity events are only written for card movement, not yet for comments or card creation
 - mutation testing is still pending
 - JWT configuration still uses a fallback secret when the environment variable is absent
 
+Mutation testing is no longer pending as infrastructure, but the current mutation score shows clear gaps in service-level coverage depth, especially around activity-service and some error-message assertions.
+
 ## Recommended Next Refactor Direction
 
 The next engineering pass should aim for deeper modularity and stronger contracts:
 
-- introduce request validation at the route boundary
-- extract Prisma access into repositories or query modules
 - remove fallback secrets from configuration for non-local environments
 - extend event generation to additional domain actions
-- add mutation testing once the domain logic is more isolated
+- improve mutation resistance for service-level behavior
+- add repository tests or repository contract coverage where useful
 
 Request validation has now been introduced, so the next priority should shift toward repository extraction, stricter config rules, and deeper automated testing.

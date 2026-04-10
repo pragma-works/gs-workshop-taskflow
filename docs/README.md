@@ -16,6 +16,8 @@ This directory contains the live documentation for the workshop implementation a
 - `adr/0002-in-memory-sqlite-integration-tests.md`: why the current tests use in-memory SQLite integration tests instead of mocking Prisma
 - `adr/0003-thin-routes-shared-auth-and-global-error-handling.md`: why the route layer was slimmed down and shared infrastructure was introduced for auth and error handling
 - `adr/0004-request-validation-at-the-route-boundary.md`: why request validation now happens at the HTTP boundary using typed schemas
+- `adr/0005-repository-extraction-and-service-level-unit-tests.md`: why persistence access moved into repositories and why services now have direct unit tests
+- `adr/0006-mutation-testing-baseline-with-stryker.md`: why mutation testing was introduced now and how it is scoped in the current codebase
 
 ## Experiment Log
 

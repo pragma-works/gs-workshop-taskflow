@@ -1,57 +1,55 @@
-import prisma from '../db'
 import { ForbiddenError, NotFoundError } from '../errors'
+import { boardRepository, BoardRepository } from '../repositories/board-repository'
 
-export async function assertBoardMember(userId: number, boardId: number): Promise<void> {
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
-  })
+type BoardServiceDependencies = {
+  boardRepository: BoardRepository
+}
+
+const defaultDependencies: BoardServiceDependencies = {
+  boardRepository,
+}
+
+export async function assertBoardMember(
+  userId: number,
+  boardId: number,
+  dependencies: BoardServiceDependencies = defaultDependencies
+): Promise<void> {
+  const membership = await dependencies.boardRepository.findMembership(userId, boardId)
 
   if (!membership) {
     throw new ForbiddenError('Not a board member')
   }
 }
 
-export async function assertBoardOwner(userId: number, boardId: number): Promise<void> {
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
-  })
+export async function assertBoardOwner(
+  userId: number,
+  boardId: number,
+  dependencies: BoardServiceDependencies = defaultDependencies
+): Promise<void> {
+  const membership = await dependencies.boardRepository.findMembership(userId, boardId)
 
   if (!membership || membership.role !== 'owner') {
     throw new ForbiddenError('Only board owners can add members')
   }
 }
 
-export async function listBoardsForUser(userId: number) {
-  const memberships = await prisma.boardMember.findMany({
-    where: { userId },
-    include: { board: true },
-  })
+export async function listBoardsForUser(
+  userId: number,
+  dependencies: BoardServiceDependencies = defaultDependencies
+) {
+  const memberships = await dependencies.boardRepository.findBoardsForUser(userId)
 
   return memberships.map((membership) => membership.board)
 }
 
-export async function getBoardDetailsForUser(userId: number, boardId: number) {
-  await assertBoardMember(userId, boardId)
+export async function getBoardDetailsForUser(
+  userId: number,
+  boardId: number,
+  dependencies: BoardServiceDependencies = defaultDependencies
+) {
+  await assertBoardMember(userId, boardId, dependencies)
 
-  const board = await prisma.board.findUnique({
-    where: { id: boardId },
-    include: {
-      lists: {
-        orderBy: { position: 'asc' },
-        include: {
-          cards: {
-            orderBy: { position: 'asc' },
-            include: {
-              comments: true,
-              labels: {
-                include: { label: true },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
+  const board = await dependencies.boardRepository.findBoardDetails(boardId)
 
   if (!board) {
     throw new NotFoundError('Board not found')
@@ -82,15 +80,20 @@ export async function getBoardDetailsForUser(userId: number, boardId: number) {
   }
 }
 
-export async function createBoardForUser(userId: number, name: string) {
-  return prisma.$transaction(async (tx) => {
-    const board = await tx.board.create({ data: { name } })
-    await tx.boardMember.create({ data: { userId, boardId: board.id, role: 'owner' } })
-    return board
-  })
+export async function createBoardForUser(
+  userId: number,
+  name: string,
+  dependencies: BoardServiceDependencies = defaultDependencies
+) {
+  return dependencies.boardRepository.createBoardWithOwner(userId, name)
 }
 
-export async function addMemberToBoard(ownerId: number, boardId: number, memberId: number) {
-  await assertBoardOwner(ownerId, boardId)
-  await prisma.boardMember.create({ data: { userId: memberId, boardId, role: 'member' } })
+export async function addMemberToBoard(
+  ownerId: number,
+  boardId: number,
+  memberId: number,
+  dependencies: BoardServiceDependencies = defaultDependencies
+) {
+  await assertBoardOwner(ownerId, boardId, dependencies)
+  await dependencies.boardRepository.addMember(boardId, memberId)
 }

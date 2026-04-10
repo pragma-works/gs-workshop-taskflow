@@ -129,17 +129,22 @@ After completing the requested exercise and validating the README checks, an add
 - route handlers were slimmed down and delegated to service modules
 - global JSON error handling was added
 - typed request validation was added at the route boundary
+- Prisma access was extracted into repository modules
 - user responses were sanitized to avoid exposing password hashes
 - authorization rules were tightened for board access and membership-sensitive operations
 - integration test helpers were extracted and the test suite was expanded
+- service-level unit tests were added
+- mutation testing was configured and executed with Stryker
 - architecture documentation, ADRs, and a system diagram were added
 
 ### Updated Metrics After Hardening
 
 - Automated tests: 11
+- Automated tests after repository extraction and unit tests: 21
 - Direct Prisma calls remaining in production `src/routes`: 0
 - TypeScript type-check: passing
 - Application startup: passing
+- Service-layer mutation score: 32.81
 
 ### Documentation Added
 
@@ -152,6 +157,8 @@ After completing the requested exercise and validating the README checks, an add
 - `docs/adr/0002-in-memory-sqlite-integration-tests.md`
 - `docs/adr/0003-thin-routes-shared-auth-and-global-error-handling.md`
 - `docs/adr/0004-request-validation-at-the-route-boundary.md`
+- `docs/adr/0005-repository-extraction-and-service-level-unit-tests.md`
+- `docs/adr/0006-mutation-testing-baseline-with-stryker.md`
 
 ### Validation Coverage Added After Hardening
 
@@ -161,6 +168,12 @@ After completing the requested exercise and validating the README checks, an add
 - invalid empty comments now return 400
 
 This made the API safer at the boundary and reduced the amount of invalid input reaching service and persistence logic.
+
+### Additional Verification Added After Hardening
+
+- service-layer unit tests now run independently from HTTP integration tests
+- mutation testing now runs against the service layer using Stryker
+- the first mutation report highlighted remaining weak spots, especially around `activity-service` coverage and some branch/message assertions
 
 
 ### Final Internal Observation

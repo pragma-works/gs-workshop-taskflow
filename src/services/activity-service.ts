@@ -1,7 +1,15 @@
-import prisma from '../db'
+import { ActivityRepository, activityRepository } from '../repositories/activity-repository'
 import { assertBoardMember } from './board-service'
 
-type ActivityRecord = Awaited<ReturnType<typeof prisma.activityEvent.findMany>>[number]
+type ActivityRecord = Awaited<ReturnType<ActivityRepository['findBoardActivity']>>[number]
+
+type ActivityServiceDependencies = {
+  activityRepository: ActivityRepository
+}
+
+const defaultDependencies: ActivityServiceDependencies = {
+  activityRepository,
+}
 
 function mapActivityEvent(event: ActivityRecord & {
   actor: { name: string }
@@ -22,26 +30,27 @@ function mapActivityEvent(event: ActivityRecord & {
   }
 }
 
-async function loadBoardActivity(boardId: number) {
-  const events = await prisma.activityEvent.findMany({
-    where: { boardId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      actor: { select: { name: true } },
-      card: { select: { title: true } },
-      fromList: { select: { name: true } },
-      toList: { select: { name: true } },
-    },
-  })
+async function loadBoardActivity(
+  boardId: number,
+  dependencies: ActivityServiceDependencies = defaultDependencies
+) {
+  const events = await dependencies.activityRepository.findBoardActivity(boardId)
 
   return events.map(mapActivityEvent)
 }
 
-export async function getBoardActivityForUser(userId: number, boardId: number) {
+export async function getBoardActivityForUser(
+  userId: number,
+  boardId: number,
+  dependencies: ActivityServiceDependencies = defaultDependencies
+) {
   await assertBoardMember(userId, boardId)
-  return loadBoardActivity(boardId)
+  return loadBoardActivity(boardId, dependencies)
 }
 
-export async function getBoardActivityPreview(boardId: number) {
-  return loadBoardActivity(boardId)
+export async function getBoardActivityPreview(
+  boardId: number,
+  dependencies: ActivityServiceDependencies = defaultDependencies
+) {
+  return loadBoardActivity(boardId, dependencies)
 }
