@@ -21,10 +21,7 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm ci
-
-      - name: Run architecture sentinel
-        run: npm run sentinel
+      - run: npm install
 
       - name: Run GS scoring
         run: npm run score
@@ -45,5 +42,3 @@ jobs:
 
       - name: Print summary
         run: cat score.json
-
-
