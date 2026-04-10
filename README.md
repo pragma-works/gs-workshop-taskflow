@@ -66,3 +66,26 @@ Executable and Composable are scored via hidden live tests after the session. Th
 - Comments are attached to cards, not boards
 - JWT secret comes from an env var, never hardcoded
 - Every endpoint has at least one test
+
+---
+
+## What was built (PM-5214: Activity Feed)
+
+### Feature: Activity Feed
+
+An activity feed that records card movements between board columns. When a card is moved via `PATCH /cards/:id/move`, the system atomically updates the card's position and creates an `ActivityEvent` record within a single database transaction.
+
+### New endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/boards/:id/activity` | Yes | Returns all activity events for a board in reverse chronological order, enriched with actor name, card title, and list names |
+| `GET` | `/boards/:id/activity/preview` | No | Same response shape — for testing without authentication |
+
+### Architecture improvements
+
+- **Repository layer** (`src/repositories/`): All database operations extracted from route handlers — zero direct ORM calls in routes
+- **Shared auth middleware** (`src/middleware/auth.ts`): `verifyToken` extracted from 3 copy-pasted copies into a single module; JWT secret reads from `process.env.JWT_SECRET`
+- **Transactional card moves**: Card update + activity event creation happen in a single `$transaction()` — no state desync
+- **N+1 query fixes**: Board detail and card detail endpoints now use Prisma `include` instead of nested loops
+- **Password hash removed from API responses**: User endpoints no longer leak password hashes

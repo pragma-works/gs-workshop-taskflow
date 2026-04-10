@@ -1,20 +1,19 @@
 # Session Observations — Participant PXXX
 
-Fill this in during your last commit (when you get the 15-minute warning).
-One sentence per question — no pressure to write more.
+Fill in all answers in OBSERVATIONS.md with concise session summary based on the completed PROMPT_CARDS steps and project improvements, replacing the placeholders.
 
 ## What worked well?
 
-<!-- Replace with one sentence: what felt smooth or productive today? -->
+- The step-by-step prompts provided clear structure and made it easy to implement the feature incrementally. Refactoring to repositories and shared middleware improved code clarity and maintainability.
 
 ## What slowed you down?
 
-<!-- Replace with one sentence: friction, confusion, or time sinks? -->
+- Adjusting the schema and refactoring all route files to remove direct Prisma usage required careful coordination and some repetitive edits.
 
 ## How did you handle git commits today?
 
-<!-- Replace with one of: typed commands manually / told the AI / mixed -->
+- told the AI
 
 ## Anything surprising?
 
-<!-- Optional: anything the AI did or didn't do that you didn't expect? -->
+- The architecture improvements (repository layer, shared auth, transaction safety) fixed several anti-patterns as a side effect of the main feature work.
