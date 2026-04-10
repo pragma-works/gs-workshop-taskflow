@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import { requireAuth } from '../middleware/auth'
 import { getBoardsForUser, getBoardById, createBoard, getMembership, addMember } from '../services/boardService'
 
@@ -40,7 +40,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 })
 
 // POST /boards/:id/members — add member
-router.post('/:id/members', requireAuth, async (req: Request, res: Response) => {
+router.post('/:id/members', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   const userId = res.locals.userId as number
   const boardId = parseInt(req.params.id)
   const { memberId } = req.body
@@ -59,7 +59,7 @@ router.post('/:id/members', requireAuth, async (req: Request, res: Response) => 
       res.status(403).json({ error: 'Forbidden' })
       return
     }
-    throw err
+    next(err)
   }
 })
 

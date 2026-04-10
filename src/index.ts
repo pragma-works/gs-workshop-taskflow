@@ -18,6 +18,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 })
 
 const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+if (!process.env.VITEST) {
+  app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+}
 
 export default app

@@ -72,6 +72,30 @@ describe('createBoard', () => {
   })
 })
 
+describe('getBoardById', () => {
+  it('returns board with deep relations when found', async () => {
+    const board = { id: 5, name: 'Test Board', createdAt: new Date(), members: [], lists: [] }
+    vi.mocked(prisma.board.findUnique).mockResolvedValueOnce(board as any)
+
+    const result = await getBoardById(5)
+
+    expect(prisma.board.findUnique).toHaveBeenCalledWith({
+      where: { id: 5 },
+      include: expect.objectContaining({ members: true, lists: expect.any(Object) }),
+    })
+    expect(result).toEqual(board)
+  })
+
+  it('returns null when board does not exist', async () => {
+    vi.mocked(prisma.board.findUnique).mockResolvedValueOnce(null)
+
+    const result = await getBoardById(999)
+
+    expect(result).toBeNull()
+  })
+})
+
+
 describe('getMembership', () => {
   it('returns membership when user is a member', async () => {
     const membership = { userId: 3, boardId: 7, role: 'member' }
