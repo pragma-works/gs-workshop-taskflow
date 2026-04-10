@@ -5,6 +5,7 @@ import {
   createBoardWithOwner,
   getBoardWithDetails,
   isBoardMember,
+  isBoardOwner,
   listBoardsForUser,
 } from '../repositories/taskflow'
 
@@ -77,7 +78,12 @@ router.post('/:id/members', async (req: Request, res: Response) => {
 
   const boardId = parseInt(req.params.id)
   const { memberId } = req.body
-  // ANTI-PATTERN: no check that current user is owner before adding members
+  const isOwner = await isBoardOwner(userId, boardId)
+  if (!isOwner) {
+    res.status(403).json({ error: 'Must be a board owner' })
+    return
+  }
+
   await addBoardMember(boardId, memberId)
   res.status(201).json({ ok: true })
 })

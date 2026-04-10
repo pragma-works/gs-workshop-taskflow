@@ -244,6 +244,18 @@ const repository = {
     store.boardMembers.push(membership)
     return membership
   },
+  isBoardOwner: async (userId: number, boardId: number) =>
+    store.boardMembers.some(
+      (membership) =>
+        membership.userId === userId && membership.boardId === boardId && membership.role === 'owner',
+    ),
+  getBoardIdForList: async (listId: number) =>
+    store.lists.find((list) => list.id === listId)?.boardId ?? null,
+  getBoardIdForCard: async (cardId: number) => {
+    const card = store.cards.find((item) => item.id === cardId)
+    if (!card) return null
+    return store.lists.find((list) => list.id === card.listId)?.boardId ?? null
+  },
   getCardWithDetails: async (cardId: number) => {
     const card = store.cards.find((item) => item.id === cardId)
     if (!card) return null
@@ -291,6 +303,22 @@ const repository = {
   createComment: async (data: { content: string; cardId: number; userId: number }) => {
     const comment = { id: store.nextCommentId++, createdAt: new Date(), ...data }
     store.comments.push(comment)
+    return comment
+  },
+  createCommentWithActivity: async (data: { content: string; cardId: number; userId: number }) => {
+    const card = store.cards.find((item) => item.id === data.cardId)
+    if (!card) throw new Error('Card not found')
+    const list = store.lists.find((item) => item.id === card.listId)
+    if (!list) throw new Error('Card list not found')
+
+    const comment = { id: store.nextCommentId++, createdAt: new Date(), ...data }
+    store.comments.push(comment)
+    createActivityEvent({
+      boardId: list.boardId,
+      actorId: data.userId,
+      eventType: 'comment_created',
+      cardId: data.cardId,
+    })
     return comment
   },
   deleteCard: async (cardId: number) => {
@@ -505,7 +533,7 @@ describe('users routes', () => {
 
     expect(response.status).toBe(200)
     expect(response.body).toMatchObject({ email: 'ada@example.com', name: 'Ada Lovelace' })
-    expect(response.body.password).not.toBe('secret')
+    expect(response.body.password).toBeUndefined()
   })
 
   it('issues a token for valid credentials', async () => {
@@ -547,6 +575,7 @@ describe('users routes', () => {
 
     expect(found.status).toBe(200)
     expect(found.body.name).toBe('Ada Lovelace')
+    expect(found.body.password).toBeUndefined()
     expect(missing.status).toBe(404)
   })
 })
@@ -619,7 +648,7 @@ describe('boards routes', () => {
     expect(response.body).toEqual({ error: 'Board not found' })
   })
 
-  it('adds board members for authenticated callers', async () => {
+  it('adds board members for board owners', async () => {
     const { board, member, token } = await createBoardFixture()
 
     const response = await request(app)
@@ -634,6 +663,19 @@ describe('boards routes', () => {
       boardId: board.id,
       role: 'member',
     })
+  })
+
+  it('rejects board member changes from non-owners', async () => {
+    const { board, member } = await createBoardFixture()
+    store.boardMembers.push({ userId: member.id, boardId: board.id, role: 'member' })
+
+    const response = await request(app)
+      .post(`/boards/${board.id}/members`)
+      .set('Authorization', `Bearer ${createToken(member.id)}`)
+      .send({ memberId: member.id })
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ error: 'Must be a board owner' })
   })
 })
 
@@ -656,6 +698,22 @@ describe('cards routes', () => {
       comments: [{ content: 'Looks good' }],
       labels: [],
     })
+  })
+
+  it('rejects card reads for non-members', async () => {
+    const { card } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'card-outsider@example.com',
+      password: 'hashed-password',
+      name: 'Card Outsider',
+    })
+
+    const response = await request(app)
+      .get(`/cards/${card.id}`)
+      .set('Authorization', `Bearer ${createToken(outsider.id)}`)
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ error: 'Not a board member' })
   })
 
   it('returns not found for missing cards', async () => {
@@ -683,6 +741,23 @@ describe('cards routes', () => {
     })
   })
 
+  it('rejects card creation for non-members of the target board', async () => {
+    const { fromList } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'create-outsider@example.com',
+      password: 'hashed-password',
+      name: 'Create Outsider',
+    })
+
+    const response = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${createToken(outsider.id)}`)
+      .send({ title: 'Not allowed', listId: fromList.id })
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ error: 'Not a board member' })
+  })
+
   it('adds comments to cards as the authenticated user', async () => {
     const { actor, card, token } = await createBoardFixture()
 
@@ -693,6 +768,32 @@ describe('cards routes', () => {
 
     expect(response.status).toBe(201)
     expect(response.body).toMatchObject({ content: 'Done', cardId: card.id, userId: actor.id })
+    expect(store.activityEvents).toContainEqual(
+      expect.objectContaining({
+        actorId: actor.id,
+        eventType: 'comment_created',
+        cardId: card.id,
+      }),
+    )
+  })
+
+  it('rejects card comments for non-members', async () => {
+    const { card } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'comment-outsider@example.com',
+      password: 'hashed-password',
+      name: 'Comment Outsider',
+    })
+
+    const response = await request(app)
+      .post(`/cards/${card.id}/comments`)
+      .set('Authorization', `Bearer ${createToken(outsider.id)}`)
+      .send({ content: 'Nope' })
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ error: 'Not a board member' })
+    expect(store.comments).toHaveLength(0)
+    expect(store.activityEvents).toHaveLength(0)
   })
 
   it('deletes cards for authenticated callers', async () => {
@@ -705,6 +806,27 @@ describe('cards routes', () => {
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ ok: true })
     expect(store.cards).not.toContainEqual(expect.objectContaining({ id: card.id }))
+  })
+
+  it('rejects card moves and deletes for non-members', async () => {
+    const { card, toList } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'move-outsider@example.com',
+      password: 'hashed-password',
+      name: 'Move Outsider',
+    })
+    const token = createToken(outsider.id)
+
+    const moveResponse = await request(app)
+      .patch(`/cards/${card.id}/move`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ targetListId: toList.id, position: 1 })
+    const deleteResponse = await request(app).delete(`/cards/${card.id}`).set('Authorization', `Bearer ${token}`)
+
+    expect(moveResponse.status).toBe(403)
+    expect(deleteResponse.status).toBe(403)
+    expect(card.listId).not.toBe(toList.id)
+    expect(store.cards).toContainEqual(expect.objectContaining({ id: card.id }))
   })
 
   it('requires authentication before changing cards', async () => {

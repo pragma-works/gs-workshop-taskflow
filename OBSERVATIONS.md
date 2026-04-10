@@ -34,10 +34,12 @@ Fixed as a side effect of implementing the activity feed:
 - JWT verification now lives in a shared auth helper instead of being copy-pasted in every route file.
 - The JWT secret can now come from `JWT_SECRET`, while retaining the original fallback for workshop compatibility.
 - Board detail and card detail loading now use relation includes instead of nested route-level query loops.
+- Password hashes are no longer returned from user register or lookup responses.
+- Card read, create, move, comment, and delete operations now enforce board membership.
+- Adding board members now requires the caller to be a board owner.
+- Comment creation now writes a `comment_created` activity event.
 
 Anti-patterns that survived:
 - There is still no global JSON error handler.
 - The Prisma client is still a global singleton with no explicit lifecycle management.
-- Several routes still lack ownership or board membership checks, including card fetch, card create, card move, card delete, and member add ownership authorization.
-- User registration and lookup still return the password hash.
-- Comment creation still does not create an activity event.
+- Some input validation is still implicit rather than centralized.

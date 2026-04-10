@@ -2,10 +2,13 @@ import { Router, Request, Response } from 'express'
 import { verifyToken } from '../auth'
 import {
   createCard,
-  createComment,
+  createCommentWithActivity,
   deleteCard,
   findCardById,
+  getBoardIdForCard,
+  getBoardIdForList,
   getCardWithDetails,
+  isBoardMember,
   moveCardWithActivity,
 } from '../repositories/taskflow'
 
@@ -13,14 +16,28 @@ const router = Router()
 
 // GET /cards/:id
 router.get('/:id', async (req: Request, res: Response) => {
+  let userId: number
   try {
-    verifyToken(req)
+    userId = verifyToken(req)
   } catch {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
 
-  const card = await getCardWithDetails(parseInt(req.params.id))
+  const cardId = parseInt(req.params.id)
+  const boardId = await getBoardIdForCard(cardId)
+  if (!boardId) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+
+  const isMember = await isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
+  const card = await getCardWithDetails(cardId)
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
@@ -30,15 +47,27 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 // POST /cards — create card
 router.post('/', async (req: Request, res: Response) => {
+  let userId: number
   try {
-    verifyToken(req)
+    userId = verifyToken(req)
   } catch {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
 
   const { title, description, listId, assigneeId } = req.body
-  // ANTI-PATTERN: position not calculated — just appended with no ordering logic
+  const boardId = await getBoardIdForList(listId)
+  if (!boardId) {
+    res.status(404).json({ error: 'List not found' })
+    return
+  }
+
+  const isMember = await isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
   const card = await createCard({ title, description, listId, assigneeId })
   res.status(201).json(card)
 })
@@ -56,13 +85,23 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
   const cardId = parseInt(req.params.id)
   const { targetListId, position } = req.body
 
+  const boardId = await getBoardIdForCard(cardId)
+  if (!boardId) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+
+  const isMember = await isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
   const card = await findCardById(cardId)
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
   }
-
-  // ANTI-PATTERN: no ownership/membership check before moving
 
   const fromListId = card.listId
 
@@ -94,21 +133,46 @@ router.post('/:id/comments', async (req: Request, res: Response) => {
 
   const { content } = req.body
   const cardId = parseInt(req.params.id)
-  const comment = await createComment({ content, cardId, userId })
+
+  const boardId = await getBoardIdForCard(cardId)
+  if (!boardId) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+
+  const isMember = await isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
+  const comment = await createCommentWithActivity({ content, cardId, userId })
   res.status(201).json(comment)
 })
 
 // DELETE /cards/:id
 router.delete('/:id', async (req: Request, res: Response) => {
+  let userId: number
   try {
-    verifyToken(req)
+    userId = verifyToken(req)
   } catch {
     res.status(401).json({ error: 'Unauthorized' })
     return
   }
 
   const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
+  const boardId = await getBoardIdForCard(cardId)
+  if (!boardId) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+
+  const isMember = await isBoardMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+
   await deleteCard(cardId)
   res.json({ ok: true })
 })

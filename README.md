@@ -25,6 +25,14 @@ The activity feed behavior is covered by Vitest/Supertest route specs, including
 unauthenticated access, successful move logging, reverse chronological ordering, and
 rollback behavior when a move cannot be completed.
 
+Additional cleanup applied after the feature:
+
+- User responses omit password hashes.
+- Board membership is enforced before reading, creating, moving, commenting on, or deleting cards.
+- Only board owners can add members.
+- Comments create `comment_created` activity events.
+- Shared auth and repository functions keep route handlers focused on HTTP behavior.
+
 ---
 
 ## Your instructions are in START.md

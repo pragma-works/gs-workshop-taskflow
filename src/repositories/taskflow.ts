@@ -27,6 +27,26 @@ export async function isBoardMember(userId: number, boardId: number): Promise<bo
   return membership !== null
 }
 
+export async function isBoardOwner(userId: number, boardId: number): Promise<boolean> {
+  const membership = await prisma.boardMember.findUnique({
+    where: { userId_boardId: { userId, boardId } },
+  })
+  return membership?.role === 'owner'
+}
+
+export async function getBoardIdForList(listId: number): Promise<number | null> {
+  const list = await prisma.list.findUnique({ where: { id: listId }, select: { boardId: true } })
+  return list?.boardId ?? null
+}
+
+export async function getBoardIdForCard(cardId: number): Promise<number | null> {
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { list: { select: { boardId: true } } },
+  })
+  return card?.list.boardId ?? null
+}
+
 export async function getBoardWithDetails(boardId: number) {
   const board = await prisma.board.findUnique({
     where: { id: boardId },
@@ -142,8 +162,33 @@ export async function moveCardWithActivity(data: {
   })
 }
 
-export async function createComment(data: { content: string; cardId: number; userId: number }) {
-  return prisma.comment.create({ data })
+export async function createCommentWithActivity(data: {
+  content: string
+  cardId: number
+  userId: number
+}) {
+  return prisma.$transaction(async (tx) => {
+    const card = await tx.card.findUnique({
+      where: { id: data.cardId },
+      select: { list: { select: { boardId: true } } },
+    })
+
+    if (!card) {
+      throw new Error('Card not found')
+    }
+
+    const comment = await tx.comment.create({ data })
+    await tx.activityEvent.create({
+      data: {
+        eventType: 'comment_created',
+        cardId: data.cardId,
+        actorId: data.userId,
+        boardId: card.list.boardId,
+      },
+    })
+
+    return comment
+  })
 }
 
 export async function deleteCard(cardId: number) {

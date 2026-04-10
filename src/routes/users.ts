@@ -5,13 +5,17 @@ import { createUser, findUserByEmail, findUserById } from '../repositories/taskf
 
 const router = Router()
 
+function toPublicUser<T extends { password: string }>(user: T): Omit<T, 'password'> {
+  const { password: _password, ...publicUser } = user
+  return publicUser
+}
+
 // POST /users/register
 router.post('/register', async (req: Request, res: Response) => {
   const { email, password, name } = req.body
   const hashed = await bcrypt.hash(password, 10)
   const user = await createUser({ email, password: hashed, name })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
+  res.json(toPublicUser(user))
 })
 
 // POST /users/login
@@ -38,8 +42,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
+  res.json(toPublicUser(user))
 })
 
 export default router
