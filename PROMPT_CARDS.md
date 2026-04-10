@@ -49,6 +49,8 @@ Do not write any TypeScript yet.
 ```
 Rewrite `PATCH /cards/:id/move` in `src/routes/cards.ts`.
 
+provide a current behavior of patch 
+
 Requirements:
 - Accept body: `{ targetListId: number, position: number }`
 - Verify the caller is authenticated (use the existing verifyToken function)
@@ -57,6 +59,10 @@ Requirements:
   2. Create an ActivityEvent with eventType "card_moved", cardId, fromListId, toListId, actorId, boardId
 - If the transaction fails, return 500 with `{ error: "Move failed", details: <message> }`
 - Return `{ ok: true, event: <the created ActivityEvent> }` on success
+
+provide an understandment of the changes required
+
+ask to the user for an approval before code changes
 
 Do not modify any other route or file.
 ```
