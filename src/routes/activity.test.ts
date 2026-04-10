@@ -1,59 +1,55 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type supertest from 'supertest'
 
 const JWT_SECRET = 'super-secret-key-change-me'
 
-type Statement = {
-  get: (...params: unknown[]) => unknown
-  all: (...params: unknown[]) => unknown[]
-  run: (...params: unknown[]) => unknown
-}
-
-type Database = {
-  exec: (sql: string) => void
-  prepare: (sql: string) => Statement
-  close: () => void
-}
-
-type UserRow = {
+type User = {
   id: number
   email: string
   password: string
   name: string
-  createdAt: string
+  createdAt: Date
 }
 
-type BoardRow = {
+type Board = {
   id: number
   name: string
-  createdAt: string
+  createdAt: Date
 }
 
-type BoardMemberRow = {
+type BoardMember = {
   userId: number
   boardId: number
   role: string
 }
 
-type ListRow = {
+type List = {
   id: number
   name: string
   position: number
   boardId: number
 }
 
-type CardRow = {
+type Card = {
   id: number
   title: string
   description: string | null
   position: number
-  dueDate: string | null
+  dueDate: Date | null
   listId: number
   assigneeId: number | null
-  createdAt: string
+  createdAt: Date
 }
 
-type ActivityEventRow = {
+type Comment = {
+  id: number
+  content: string
+  cardId: number
+  userId: number
+  createdAt: Date
+}
+
+type ActivityEvent = {
   id: number
   boardId: number
   actorId: number
@@ -61,139 +57,87 @@ type ActivityEventRow = {
   cardId: number | null
   fromListId: number | null
   toListId: number | null
-  createdAt: string
+  createdAt: Date
 }
 
-type ActivityEventWithRelations = ActivityEventRow & {
-  actor?: UserRow
-  card?: CardRow | null
-  fromList?: ListRow | null
-  toList?: ListRow | null
+type Store = {
+  users: User[]
+  boards: Board[]
+  boardMembers: BoardMember[]
+  lists: List[]
+  cards: Card[]
+  comments: Comment[]
+  activityEvents: ActivityEvent[]
+  nextUserId: number
+  nextBoardId: number
+  nextListId: number
+  nextCardId: number
+  nextCommentId: number
+  nextEventId: number
 }
 
-type CreateArgs<T> = { data: T }
-type WhereId = { where: { id: number } }
-
-const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: new (path: string) => Database }
-const db = new DatabaseSync(':memory:')
+const store: Store = {
+  users: [],
+  boards: [],
+  boardMembers: [],
+  lists: [],
+  cards: [],
+  comments: [],
+  activityEvents: [],
+  nextUserId: 1,
+  nextBoardId: 1,
+  nextListId: 1,
+  nextCardId: 1,
+  nextCommentId: 1,
+  nextEventId: 1,
+}
 
 let app: import('express').Express
 let jwt: typeof import('jsonwebtoken')
 let request: typeof supertest
 
-function one<T>(sql: string, ...params: unknown[]): T | null {
-  return (db.prepare(sql).get(...params) as T | undefined) ?? null
+function resetStore() {
+  store.users = []
+  store.boards = []
+  store.boardMembers = []
+  store.lists = []
+  store.cards = []
+  store.comments = []
+  store.activityEvents = []
+  store.nextUserId = 1
+  store.nextBoardId = 1
+  store.nextListId = 1
+  store.nextCardId = 1
+  store.nextCommentId = 1
+  store.nextEventId = 1
 }
 
-function many<T>(sql: string, ...params: unknown[]): T[] {
-  return db.prepare(sql).all(...params) as T[]
+function createToken(userId: number) {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' })
 }
 
-function run(sql: string, ...params: unknown[]) {
-  db.prepare(sql).run(...params)
-}
-
-function createSchema() {
-  db.exec(`
-    PRAGMA foreign_keys = ON;
-
-    CREATE TABLE "User" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "email" TEXT NOT NULL UNIQUE,
-      "password" TEXT NOT NULL,
-      "name" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE "Board" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "name" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE "BoardMember" (
-      "userId" INTEGER NOT NULL,
-      "boardId" INTEGER NOT NULL,
-      "role" TEXT NOT NULL DEFAULT 'member',
-      PRIMARY KEY ("userId", "boardId"),
-      CONSTRAINT "BoardMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id"),
-      CONSTRAINT "BoardMember_boardId_fkey" FOREIGN KEY ("boardId") REFERENCES "Board" ("id")
-    );
-
-    CREATE TABLE "List" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "name" TEXT NOT NULL,
-      "position" INTEGER NOT NULL,
-      "boardId" INTEGER NOT NULL,
-      CONSTRAINT "List_boardId_fkey" FOREIGN KEY ("boardId") REFERENCES "Board" ("id")
-    );
-
-    CREATE TABLE "Card" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "title" TEXT NOT NULL,
-      "description" TEXT,
-      "position" INTEGER NOT NULL,
-      "dueDate" DATETIME,
-      "listId" INTEGER NOT NULL,
-      "assigneeId" INTEGER,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "Card_listId_fkey" FOREIGN KEY ("listId") REFERENCES "List" ("id"),
-      CONSTRAINT "Card_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "User" ("id")
-    );
-
-    CREATE TABLE "ActivityEvent" (
-      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-      "boardId" INTEGER NOT NULL,
-      "actorId" INTEGER NOT NULL,
-      "eventType" TEXT NOT NULL,
-      "cardId" INTEGER,
-      "fromListId" INTEGER,
-      "toListId" INTEGER,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "ActivityEvent_boardId_fkey" FOREIGN KEY ("boardId") REFERENCES "Board" ("id"),
-      CONSTRAINT "ActivityEvent_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "User" ("id"),
-      CONSTRAINT "ActivityEvent_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id"),
-      CONSTRAINT "ActivityEvent_fromListId_fkey" FOREIGN KEY ("fromListId") REFERENCES "List" ("id"),
-      CONSTRAINT "ActivityEvent_toListId_fkey" FOREIGN KEY ("toListId") REFERENCES "List" ("id")
-    );
-  `)
-}
-
-function clearData() {
-  for (const table of ['ActivityEvent', 'Card', 'List', 'BoardMember', 'Board', 'User']) {
-    run(`DELETE FROM "${table}"`)
+function createUser(data: { email: string; password: string; name: string }): User {
+  const user = {
+    id: store.nextUserId++,
+    email: data.email,
+    password: data.password,
+    name: data.name,
+    createdAt: new Date(),
   }
+  store.users.push(user)
+  return user
 }
 
-function createUser(data: { email: string; password: string; name: string }) {
-  return one<UserRow>(
-    `INSERT INTO "User" ("email", "password", "name") VALUES (?, ?, ?) RETURNING *`,
-    data.email,
-    data.password,
-    data.name,
-  )!
+function createBoard(data: { name: string }): Board {
+  const board = { id: store.nextBoardId++, name: data.name, createdAt: new Date() }
+  store.boards.push(board)
+  return board
 }
 
-function createBoard(data: { name: string }) {
-  return one<BoardRow>(`INSERT INTO "Board" ("name") VALUES (?) RETURNING *`, data.name)!
-}
-
-function createBoardMember(data: { userId: number; boardId: number; role?: string }) {
-  return one<BoardMemberRow>(
-    `INSERT INTO "BoardMember" ("userId", "boardId", "role") VALUES (?, ?, ?) RETURNING *`,
-    data.userId,
-    data.boardId,
-    data.role ?? 'member',
-  )!
-}
-
-function createList(data: { name: string; position: number; boardId: number }) {
-  return one<ListRow>(
-    `INSERT INTO "List" ("name", "position", "boardId") VALUES (?, ?, ?) RETURNING *`,
-    data.name,
-    data.position,
-    data.boardId,
-  )!
+function createList(data: { name: string; position: number; boardId: number }): List {
+  const list = { id: store.nextListId++, ...data }
+  store.lists.push(list)
+  return list
 }
 
 function createCard(data: {
@@ -202,16 +146,19 @@ function createCard(data: {
   position: number
   listId: number
   assigneeId?: number | null
-}) {
-  return one<CardRow>(
-    `INSERT INTO "Card" ("title", "description", "position", "listId", "assigneeId")
-     VALUES (?, ?, ?, ?, ?) RETURNING *`,
-    data.title,
-    data.description ?? null,
-    data.position,
-    data.listId,
-    data.assigneeId ?? null,
-  )!
+}): Card {
+  const card = {
+    id: store.nextCardId++,
+    title: data.title,
+    description: data.description ?? null,
+    position: data.position,
+    dueDate: null,
+    listId: data.listId,
+    assigneeId: data.assigneeId ?? null,
+    createdAt: new Date(),
+  }
+  store.cards.push(card)
+  return card
 }
 
 function createActivityEvent(data: {
@@ -222,174 +169,175 @@ function createActivityEvent(data: {
   fromListId?: number | null
   toListId?: number | null
   createdAt?: Date
-}) {
-  return one<ActivityEventRow>(
-    `INSERT INTO "ActivityEvent"
-       ("boardId", "actorId", "eventType", "cardId", "fromListId", "toListId", "createdAt")
-     VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
-     RETURNING *`,
-    data.boardId,
-    data.actorId,
-    data.eventType,
-    data.cardId ?? null,
-    data.fromListId ?? null,
-    data.toListId ?? null,
-    data.createdAt?.toISOString() ?? null,
-  )!
+}): ActivityEvent {
+  const event = {
+    id: store.nextEventId++,
+    boardId: data.boardId,
+    actorId: data.actorId,
+    eventType: data.eventType,
+    cardId: data.cardId ?? null,
+    fromListId: data.fromListId ?? null,
+    toListId: data.toListId ?? null,
+    createdAt: data.createdAt ?? new Date(),
+  }
+  store.activityEvents.push(event)
+  return event
 }
 
-function withActivityRelations(event: ActivityEventRow): ActivityEventWithRelations {
+function formatEvent(event: ActivityEvent) {
+  const actor = store.users.find((user) => user.id === event.actorId)
+  const card = store.cards.find((item) => item.id === event.cardId)
+  const fromList = store.lists.find((list) => list.id === event.fromListId)
+  const toList = store.lists.find((list) => list.id === event.toListId)
+
   return {
     ...event,
-    actor: one<UserRow>(`SELECT * FROM "User" WHERE "id" = ?`, event.actorId) ?? undefined,
-    card: event.cardId ? one<CardRow>(`SELECT * FROM "Card" WHERE "id" = ?`, event.cardId) : null,
-    fromList: event.fromListId
-      ? one<ListRow>(`SELECT * FROM "List" WHERE "id" = ?`, event.fromListId)
-      : null,
-    toList: event.toListId
-      ? one<ListRow>(`SELECT * FROM "List" WHERE "id" = ?`, event.toListId)
-      : null,
+    actorName: actor?.name,
+    cardTitle: card?.title ?? null,
+    fromListName: fromList?.name ?? null,
+    toListName: toList?.name ?? null,
   }
 }
 
-const prisma = {
-  user: {
-    create: async ({ data }: CreateArgs<{ email: string; password: string; name: string }>) =>
-      createUser(data),
-  },
-  board: {
-    create: async ({ data }: CreateArgs<{ name: string }>) => createBoard(data),
-  },
-  boardMember: {
-    create: async ({
-      data,
-    }: CreateArgs<{ userId: number; boardId: number; role?: string }>) => createBoardMember(data),
-    findUnique: async ({
-      where,
-    }: {
-      where: { userId_boardId: { userId: number; boardId: number } }
-    }) =>
-      one<BoardMemberRow>(
-        `SELECT * FROM "BoardMember" WHERE "userId" = ? AND "boardId" = ?`,
-        where.userId_boardId.userId,
-        where.userId_boardId.boardId,
-      ),
-  },
-  list: {
-    create: async ({ data }: CreateArgs<{ name: string; position: number; boardId: number }>) =>
-      createList(data),
-    findUnique: async ({ where }: WhereId) =>
-      one<ListRow>(`SELECT * FROM "List" WHERE "id" = ?`, where.id),
-  },
-  card: {
-    create: async ({
-      data,
-    }: CreateArgs<{
-      title: string
-      description?: string | null
-      position: number
-      listId: number
-      assigneeId?: number | null
-    }>) => createCard(data),
-    findUnique: async ({ where }: WhereId) =>
-      one<CardRow>(`SELECT * FROM "Card" WHERE "id" = ?`, where.id),
-    findUniqueOrThrow: async ({ where }: WhereId) => {
-      const card = one<CardRow>(`SELECT * FROM "Card" WHERE "id" = ?`, where.id)
-      if (!card) throw new Error('Card not found')
-      return card
-    },
-    update: async ({
-      where,
-      data,
-    }: {
-      where: { id: number }
-      data: { listId: number; position: number }
-    }) =>
-      one<CardRow>(
-        `UPDATE "Card" SET "listId" = ?, "position" = ? WHERE "id" = ? RETURNING *`,
-        data.listId,
-        data.position,
-        where.id,
-      ),
-  },
-  activityEvent: {
-    create: async ({ data }: CreateArgs<Parameters<typeof createActivityEvent>[0]>) =>
-      createActivityEvent(data),
-    findMany: async ({
-      where,
-    }: {
-      where?: { boardId?: number; cardId?: number }
-      orderBy?: { createdAt: 'desc' | 'asc' }
-      include?: unknown
-    }) => {
-      const clauses: string[] = []
-      const params: unknown[] = []
+const repository = {
+  createUser: async (data: { email: string; password: string; name: string }) => createUser(data),
+  findUserByEmail: async (email: string) => store.users.find((user) => user.email === email) ?? null,
+  findUserById: async (id: number) => store.users.find((user) => user.id === id) ?? null,
+  listBoardsForUser: async (userId: number) =>
+    store.boardMembers
+      .filter((membership) => membership.userId === userId)
+      .map((membership) => store.boards.find((board) => board.id === membership.boardId))
+      .filter(Boolean),
+  isBoardMember: async (userId: number, boardId: number) =>
+    store.boardMembers.some(
+      (membership) => membership.userId === userId && membership.boardId === boardId,
+    ),
+  getBoardWithDetails: async (boardId: number) => {
+    const board = store.boards.find((item) => item.id === boardId)
+    if (!board) return null
 
-      if (where?.boardId !== undefined) {
-        clauses.push(`"boardId" = ?`)
-        params.push(where.boardId)
-      }
-
-      if (where?.cardId !== undefined) {
-        clauses.push(`"cardId" = ?`)
-        params.push(where.cardId)
-      }
-
-      const rows = many<ActivityEventRow>(
-        `SELECT * FROM "ActivityEvent"${clauses.length ? ` WHERE ${clauses.join(' AND ')}` : ''}
-         ORDER BY "createdAt" DESC, "id" DESC`,
-        ...params,
-      )
-
-      return rows.map(withActivityRelations)
-    },
-  },
-  $transaction: async <T>(callback: (tx: Record<string, unknown>) => Promise<T>) => {
-    db.exec('BEGIN')
-    try {
-      const result = await callback(prisma)
-      db.exec('COMMIT')
-      return result
-    } catch (error) {
-      db.exec('ROLLBACK')
-      throw error
+    return {
+      ...board,
+      lists: store.lists
+        .filter((list) => list.boardId === boardId)
+        .sort((left, right) => left.position - right.position)
+        .map((list) => ({
+          ...list,
+          cards: store.cards
+            .filter((card) => card.listId === list.id)
+            .sort((left, right) => left.position - right.position)
+            .map((card) => ({
+              ...card,
+              comments: store.comments.filter((comment) => comment.cardId === card.id),
+              labels: [],
+            })),
+        })),
     }
   },
+  createBoardWithOwner: async (userId: number, name: string) => {
+    const board = createBoard({ name })
+    store.boardMembers.push({ userId, boardId: board.id, role: 'owner' })
+    return board
+  },
+  addBoardMember: async (boardId: number, memberId: number) => {
+    const membership = { userId: memberId, boardId, role: 'member' }
+    store.boardMembers.push(membership)
+    return membership
+  },
+  getCardWithDetails: async (cardId: number) => {
+    const card = store.cards.find((item) => item.id === cardId)
+    if (!card) return null
+
+    return {
+      ...card,
+      comments: store.comments.filter((comment) => comment.cardId === card.id),
+      labels: [],
+    }
+  },
+  createCard: async (data: {
+    title: string
+    description?: string
+    listId: number
+    assigneeId?: number
+  }) => {
+    const position = store.cards.filter((card) => card.listId === data.listId).length
+    return createCard({ ...data, position })
+  },
+  findCardById: async (cardId: number) => store.cards.find((card) => card.id === cardId) ?? null,
+  moveCardWithActivity: async (data: {
+    cardId: number
+    actorId: number
+    fromListId: number
+    targetListId: number
+    position: number
+  }) => {
+    const card = store.cards.find((item) => item.id === data.cardId)
+    const targetList = store.lists.find((list) => list.id === data.targetListId)
+
+    if (!card) throw new Error('Card not found')
+    if (!targetList) throw new Error('Target list not found')
+
+    card.listId = data.targetListId
+    card.position = data.position
+    return createActivityEvent({
+      boardId: targetList.boardId,
+      actorId: data.actorId,
+      eventType: 'card_moved',
+      cardId: data.cardId,
+      fromListId: data.fromListId,
+      toListId: data.targetListId,
+    })
+  },
+  createComment: async (data: { content: string; cardId: number; userId: number }) => {
+    const comment = { id: store.nextCommentId++, createdAt: new Date(), ...data }
+    store.comments.push(comment)
+    return comment
+  },
+  deleteCard: async (cardId: number) => {
+    const card = store.cards.find((item) => item.id === cardId)
+    if (!card) throw new Error('Card not found')
+    store.cards = store.cards.filter((item) => item.id !== cardId)
+    return card
+  },
+  getActivityEvents: async (boardId: number) =>
+    store.activityEvents
+      .filter((event) => event.boardId === boardId)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .map(formatEvent),
 }
 
 async function createBoardFixture() {
-  const actor = await prisma.user.create({
-    data: {
-      email: `ada-${Date.now()}-${Math.random()}@example.com`,
-      password: 'hashed-password',
-      name: 'Ada Lovelace',
-    },
+  const actor = createUser({
+    email: `ada-${Date.now()}-${Math.random()}@example.com`,
+    password: 'hashed-password',
+    name: 'Ada Lovelace',
   })
-  const board = await prisma.board.create({ data: { name: 'Launch Plan' } })
-  await prisma.boardMember.create({ data: { userId: actor.id, boardId: board.id, role: 'owner' } })
-  const fromList = await prisma.list.create({
-    data: { name: 'Todo', position: 0, boardId: board.id },
+  const member = createUser({
+    email: `grace-${Date.now()}-${Math.random()}@example.com`,
+    password: 'hashed-password',
+    name: 'Grace Hopper',
   })
-  const toList = await prisma.list.create({
-    data: { name: 'Done', position: 1, boardId: board.id },
-  })
-  const card = await prisma.card.create({
-    data: { title: 'Write activity feed', position: 0, listId: fromList.id },
-  })
-  const token = jwt.sign({ userId: actor.id }, JWT_SECRET, { expiresIn: '7d' })
+  const board = createBoard({ name: 'Launch Plan' })
+  store.boardMembers.push({ userId: actor.id, boardId: board.id, role: 'owner' })
+  const fromList = createList({ name: 'Todo', position: 0, boardId: board.id })
+  const toList = createList({ name: 'Done', position: 1, boardId: board.id })
+  const card = createCard({ title: 'Write activity feed', position: 0, listId: fromList.id })
+  const token = createToken(actor.id)
 
-  return { actor, board, fromList, toList, card, token }
+  return { actor, member, board, fromList, toList, card, token }
 }
 
 beforeAll(async () => {
-  createSchema()
-  vi.doMock('../db', () => ({ default: prisma }))
+  process.env.JWT_SECRET = JWT_SECRET
+  vi.doMock('../repositories/taskflow', () => repository)
 
-  const [expressModule, supertestModule, jwtModule, cardsModule, activityModule] =
+  const [expressModule, supertestModule, jwtModule, usersModule, boardsModule, cardsModule, activityModule] =
     await Promise.all([
       import('express'),
       import('supertest'),
       import('jsonwebtoken'),
+      import('./users'),
+      import('./boards'),
       import('./cards'),
       import('./activity'),
     ])
@@ -399,16 +347,14 @@ beforeAll(async () => {
 
   app = expressModule.default()
   app.use(expressModule.default.json())
-  app.use('/cards', cardsModule.default)
+  app.use('/users', usersModule.default)
+  app.use('/boards', boardsModule.default)
   app.use('/boards', activityModule.default)
+  app.use('/cards', cardsModule.default)
 })
 
 beforeEach(() => {
-  clearData()
-})
-
-afterAll(() => {
-  db.close()
+  resetStore()
 })
 
 describe('activity feed routes', () => {
@@ -440,12 +386,9 @@ describe('activity feed routes', () => {
       },
     })
 
-    const movedCard = await prisma.card.findUniqueOrThrow({ where: { id: card.id } })
-    const events = await prisma.activityEvent.findMany({ where: { cardId: card.id } })
-
-    expect(movedCard).toMatchObject({ listId: toList.id, position: 3 })
-    expect(events).toHaveLength(1)
-    expect(events[0]).toMatchObject({
+    expect(card).toMatchObject({ listId: toList.id, position: 3 })
+    expect(store.activityEvents).toHaveLength(1)
+    expect(store.activityEvents[0]).toMatchObject({
       boardId: board.id,
       actorId: actor.id,
       eventType: 'card_moved',
@@ -458,27 +401,23 @@ describe('activity feed routes', () => {
   it('returns preview events newest first with denormalized display names', async () => {
     const { actor, board, fromList, toList, card } = await createBoardFixture()
 
-    await prisma.activityEvent.create({
-      data: {
-        boardId: board.id,
-        actorId: actor.id,
-        eventType: 'card_moved',
-        cardId: card.id,
-        fromListId: fromList.id,
-        toListId: toList.id,
-        createdAt: new Date('2024-01-01T10:00:00.000Z'),
-      },
+    createActivityEvent({
+      boardId: board.id,
+      actorId: actor.id,
+      eventType: 'card_moved',
+      cardId: card.id,
+      fromListId: fromList.id,
+      toListId: toList.id,
+      createdAt: new Date('2024-01-01T10:00:00.000Z'),
     })
-    await prisma.activityEvent.create({
-      data: {
-        boardId: board.id,
-        actorId: actor.id,
-        eventType: 'card_moved',
-        cardId: card.id,
-        fromListId: toList.id,
-        toListId: fromList.id,
-        createdAt: new Date('2024-01-01T11:00:00.000Z'),
-      },
+    createActivityEvent({
+      boardId: board.id,
+      actorId: actor.id,
+      eventType: 'card_moved',
+      cardId: card.id,
+      fromListId: toList.id,
+      toListId: fromList.id,
+      createdAt: new Date('2024-01-01T11:00:00.000Z'),
     })
 
     const response = await request(app).get(`/boards/${board.id}/activity/preview`)
@@ -513,11 +452,276 @@ describe('activity feed routes', () => {
 
     expect(response.status).toBe(500)
     expect(response.body.error).toBe('Move failed')
+    expect(card).toMatchObject({ listId: fromList.id, position: 0 })
+    expect(store.activityEvents).toHaveLength(0)
+  })
 
-    const unchangedCard = await prisma.card.findUniqueOrThrow({ where: { id: card.id } })
-    const events = await prisma.activityEvent.findMany({ where: { cardId: card.id } })
+  it('returns authenticated board activity for board members', async () => {
+    const { actor, board, fromList, toList, card, token } = await createBoardFixture()
+    createActivityEvent({
+      boardId: board.id,
+      actorId: actor.id,
+      eventType: 'card_moved',
+      cardId: card.id,
+      fromListId: fromList.id,
+      toListId: toList.id,
+    })
 
-    expect(unchangedCard).toMatchObject({ listId: fromList.id, position: 0 })
-    expect(events).toHaveLength(0)
+    const response = await request(app)
+      .get(`/boards/${board.id}/activity`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body[0]).toMatchObject({
+      actorName: 'Ada Lovelace',
+      cardTitle: 'Write activity feed',
+      fromListName: 'Todo',
+      toListName: 'Done',
+    })
+  })
+
+  it('rejects authenticated board activity for non-members', async () => {
+    const { board } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'outside@example.com',
+      password: 'hashed-password',
+      name: 'Outside User',
+    })
+
+    const response = await request(app)
+      .get(`/boards/${board.id}/activity`)
+      .set('Authorization', `Bearer ${createToken(outsider.id)}`)
+
+    expect(response.status).toBe(403)
+    expect(response.body).toEqual({ error: 'Not a board member' })
+  })
+})
+
+describe('users routes', () => {
+  it('registers users with a hashed password', async () => {
+    const response = await request(app)
+      .post('/users/register')
+      .send({ email: 'ada@example.com', password: 'secret', name: 'Ada Lovelace' })
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({ email: 'ada@example.com', name: 'Ada Lovelace' })
+    expect(response.body.password).not.toBe('secret')
+  })
+
+  it('issues a token for valid credentials', async () => {
+    await request(app)
+      .post('/users/register')
+      .send({ email: 'ada@example.com', password: 'secret', name: 'Ada Lovelace' })
+
+    const response = await request(app)
+      .post('/users/login')
+      .send({ email: 'ada@example.com', password: 'secret' })
+
+    expect(response.status).toBe(200)
+    expect(response.body.token).toEqual(expect.any(String))
+  })
+
+  it('rejects invalid credentials', async () => {
+    const missingUser = await request(app)
+      .post('/users/login')
+      .send({ email: 'missing@example.com', password: 'secret' })
+
+    await request(app)
+      .post('/users/register')
+      .send({ email: 'ada@example.com', password: 'secret', name: 'Ada Lovelace' })
+    const badPassword = await request(app)
+      .post('/users/login')
+      .send({ email: 'ada@example.com', password: 'wrong' })
+
+    expect(missingUser.status).toBe(401)
+    expect(badPassword.status).toBe(401)
+  })
+
+  it('returns users by id or a not found response', async () => {
+    const created = await request(app)
+      .post('/users/register')
+      .send({ email: 'ada@example.com', password: 'secret', name: 'Ada Lovelace' })
+
+    const found = await request(app).get(`/users/${created.body.id}`)
+    const missing = await request(app).get('/users/9999')
+
+    expect(found.status).toBe(200)
+    expect(found.body.name).toBe('Ada Lovelace')
+    expect(missing.status).toBe(404)
+  })
+})
+
+describe('boards routes', () => {
+  it('lists and creates boards for authenticated users', async () => {
+    const { actor, board, token } = await createBoardFixture()
+
+    const listed = await request(app).get('/boards').set('Authorization', `Bearer ${token}`)
+    const created = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'New Board' })
+
+    expect(listed.status).toBe(200)
+    expect(listed.body).toMatchObject([{ id: board.id, name: board.name }])
+    expect(created.status).toBe(201)
+    expect(created.body).toMatchObject({ name: 'New Board' })
+    expect(store.boardMembers).toContainEqual({
+      userId: actor.id,
+      boardId: created.body.id,
+      role: 'owner',
+    })
+  })
+
+  it('requires authentication before listing boards', async () => {
+    const response = await request(app).get('/boards')
+
+    expect(response.status).toBe(401)
+  })
+
+  it('returns full board details to members', async () => {
+    const { board, token } = await createBoardFixture()
+
+    const response = await request(app)
+      .get(`/boards/${board.id}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      id: board.id,
+      lists: [{ name: 'Todo', cards: [{ title: 'Write activity feed' }] }, { name: 'Done' }],
+    })
+  })
+
+  it('rejects full board details for non-members before board lookup', async () => {
+    const { board } = await createBoardFixture()
+    const outsider = createUser({
+      email: 'outsider@example.com',
+      password: 'hashed-password',
+      name: 'Outsider',
+    })
+
+    const response = await request(app)
+      .get(`/boards/${board.id}`)
+      .set('Authorization', `Bearer ${createToken(outsider.id)}`)
+
+    expect(response.status).toBe(403)
+  })
+
+  it('returns not found for a missing board after membership passes', async () => {
+    const { actor } = await createBoardFixture()
+    store.boardMembers.push({ userId: actor.id, boardId: 9999, role: 'member' })
+
+    const response = await request(app)
+      .get('/boards/9999')
+      .set('Authorization', `Bearer ${createToken(actor.id)}`)
+
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'Board not found' })
+  })
+
+  it('adds board members for authenticated callers', async () => {
+    const { board, member, token } = await createBoardFixture()
+
+    const response = await request(app)
+      .post(`/boards/${board.id}/members`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ memberId: member.id })
+
+    expect(response.status).toBe(201)
+    expect(response.body).toEqual({ ok: true })
+    expect(store.boardMembers).toContainEqual({
+      userId: member.id,
+      boardId: board.id,
+      role: 'member',
+    })
+  })
+})
+
+describe('cards routes', () => {
+  it('returns cards with comments and labels', async () => {
+    const { card, actor, token } = await createBoardFixture()
+    store.comments.push({
+      id: store.nextCommentId++,
+      content: 'Looks good',
+      cardId: card.id,
+      userId: actor.id,
+      createdAt: new Date(),
+    })
+
+    const response = await request(app).get(`/cards/${card.id}`).set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      title: 'Write activity feed',
+      comments: [{ content: 'Looks good' }],
+      labels: [],
+    })
+  })
+
+  it('returns not found for missing cards', async () => {
+    const { token } = await createBoardFixture()
+
+    const response = await request(app).get('/cards/9999').set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('creates cards at the next position in the list', async () => {
+    const { fromList, token } = await createBoardFixture()
+
+    const response = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Second card', description: 'Details', listId: fromList.id })
+
+    expect(response.status).toBe(201)
+    expect(response.body).toMatchObject({
+      title: 'Second card',
+      description: 'Details',
+      listId: fromList.id,
+      position: 1,
+    })
+  })
+
+  it('adds comments to cards as the authenticated user', async () => {
+    const { actor, card, token } = await createBoardFixture()
+
+    const response = await request(app)
+      .post(`/cards/${card.id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ content: 'Done' })
+
+    expect(response.status).toBe(201)
+    expect(response.body).toMatchObject({ content: 'Done', cardId: card.id, userId: actor.id })
+  })
+
+  it('deletes cards for authenticated callers', async () => {
+    const { card, token } = await createBoardFixture()
+
+    const response = await request(app)
+      .delete(`/cards/${card.id}`)
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ ok: true })
+    expect(store.cards).not.toContainEqual(expect.objectContaining({ id: card.id }))
+  })
+
+  it('requires authentication before changing cards', async () => {
+    const { card } = await createBoardFixture()
+
+    const createResponse = await request(app).post('/cards').send({ title: 'Nope', listId: 1 })
+    const moveResponse = await request(app)
+      .patch(`/cards/${card.id}/move`)
+      .send({ targetListId: 1, position: 0 })
+    const commentResponse = await request(app)
+      .post(`/cards/${card.id}/comments`)
+      .send({ content: 'Nope' })
+    const deleteResponse = await request(app).delete(`/cards/${card.id}`)
+
+    expect(createResponse.status).toBe(401)
+    expect(moveResponse.status).toBe(401)
+    expect(commentResponse.status).toBe(401)
+    expect(deleteResponse.status).toBe(401)
   })
 })

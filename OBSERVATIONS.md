@@ -30,14 +30,14 @@ Fixed as a side effect of implementing the activity feed:
 - Card moves now update the card and create the move activity event in one transaction.
 - The new activity feed query avoids database queries in a loop by using Prisma `include`.
 - The new activity feed and move behavior have Vitest coverage.
+- Direct Prisma access was moved out of route handlers into a repository module.
+- JWT verification now lives in a shared auth helper instead of being copy-pasted in every route file.
+- The JWT secret can now come from `JWT_SECRET`, while retaining the original fallback for workshop compatibility.
+- Board detail and card detail loading now use relation includes instead of nested route-level query loops.
 
 Anti-patterns that survived:
-- JWT verification is still copy-pasted across route files.
-- The JWT secret is still hardcoded instead of coming from an environment variable.
-- Route handlers still contain business logic and direct Prisma access.
 - There is still no global JSON error handler.
 - The Prisma client is still a global singleton with no explicit lifecycle management.
-- Existing board and card routes still contain N+1 query patterns outside the new activity feed.
 - Several routes still lack ownership or board membership checks, including card fetch, card create, card move, card delete, and member add ownership authorization.
 - User registration and lookup still return the password hash.
 - Comment creation still does not create an activity event.

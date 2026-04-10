@@ -5,6 +5,28 @@ move cards between them, and discuss work in comments.
 
 ---
 
+## Activity feed implementation
+
+This branch adds a board activity feed for card moves. The Prisma schema now includes
+`ActivityEvent`, which records the board, actor, card, source list, destination list,
+event type, and creation time for feed entries.
+
+Implemented endpoints:
+
+- `PATCH /cards/:id/move` moves a card and creates a `card_moved` activity event in one transaction.
+- `GET /boards/:id/activity` returns authenticated board activity in reverse chronological order.
+- `GET /boards/:id/activity/preview` returns the same activity shape without auth for workshop testing.
+
+Activity responses include display fields for the UI: `actorName`, `cardTitle`,
+`fromListName`, and `toListName`. Route handlers delegate database work to a repository
+module so the HTTP layer stays focused on request parsing and responses.
+
+The activity feed behavior is covered by Vitest/Supertest route specs, including
+unauthenticated access, successful move logging, reverse chronological ordering, and
+rollback behavior when a move cannot be completed.
+
+---
+
 ## Your instructions are in START.md
 
 Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
