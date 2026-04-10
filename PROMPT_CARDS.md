@@ -86,9 +86,8 @@ Wire the router into `src/index.ts` at path `/boards`.
 ## Prompt 5 — Tests
 
 ```
-Write tests for the activity feed in `src/routes/activity.test.ts`
-test framework Vitest
-list endpoints to cover
+Write tests for the activity feed in `src/routes/activity.test.ts` using your choice of
+test framework (Jest or Vitest, whichever is already in package.json; if neither, add Vitest).
 
 Cover these cases:
 1. Unauthenticated request to `GET /boards/:id/activity` returns 401
@@ -98,8 +97,6 @@ Cover these cases:
 
 Use an in-memory SQLite database for tests — do not call the real DB.
 Name each test as a specification: describe what the system does, not what the test does.
-
-adhere to business logic in case of doubt or ask to the user for any concern
 ```
 
 ---
