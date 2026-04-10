@@ -21,11 +21,12 @@ model User {
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
+  id        Int              @id @default(autoincrement())
   name      String
-  createdAt DateTime      @default(now())
+  createdAt DateTime         @default(now())
   members   BoardMember[]
   lists     List[]
+  activities ActivityEvent[]
 }
 
 model BoardMember {
@@ -86,4 +87,17 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int?
+  userId    Int
+  action    String
+  meta      String?
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id])
+
+  @@index([boardId, createdAt])
 }

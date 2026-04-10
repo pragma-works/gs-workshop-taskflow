@@ -2,9 +2,8 @@ import { Router } from 'express'
 
 const router = Router()
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+// Activity endpoints are now in boards.ts:
+// - GET /boards/:id/activity
+// - GET /boards/:id/activity/preview
 
 export default router

@@ -1,34 +1,25 @@
 import { Router, Request, Response } from 'express'
 import * as bcrypt from 'bcryptjs'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import { generateToken } from '../middleware/auth'
+import { UserRepository } from '../repositories/user.repository'
 
 const router = Router()
-
-// ANTI-PATTERN: auth helper copy-pasted from boards.ts and cards.ts
-// All three files have identical copies — single change requires 3 edits
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret — same string in boards.ts and cards.ts
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
+const userRepo = new UserRepository()
 
 // POST /users/register
 router.post('/register', async (req: Request, res: Response) => {
   const { email, password, name } = req.body
   const hashed = await bcrypt.hash(password, 10)
-  const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
+  const user = await userRepo.create(email, hashed, name)
+  // Don't return password in response
+  const { password: _, ...userWithoutPassword } = user
+  res.json(userWithoutPassword)
 })
 
 // POST /users/login
 router.post('/login', async (req: Request, res: Response) => {
   const { email, password } = req.body
-  const user = await prisma.user.findUnique({ where: { email } })
+  const user = await userRepo.findByEmail(email)
   if (!user) {
     res.status(401).json({ error: 'Invalid credentials' })
     return
@@ -38,19 +29,20 @@ router.post('/login', async (req: Request, res: Response) => {
     res.status(401).json({ error: 'Invalid credentials' })
     return
   }
-  const token = jwt.sign({ userId: user.id }, 'super-secret-key-change-me', { expiresIn: '7d' })
+  const token = generateToken(user.id)
   res.json({ token })
 })
 
 // GET /users/:id
 router.get('/:id', async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
+  const user = await userRepo.findById(parseInt(req.params.id))
   if (!user) {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
+  // Don't return password in response
+  const { password: _, ...userWithoutPassword } = user
+  res.json(userWithoutPassword)
 })
 
 export default router

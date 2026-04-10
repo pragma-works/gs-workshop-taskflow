@@ -3,6 +3,25 @@
 A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
 move cards between them, and discuss work in comments.
 
+## Features Built (PM-5214: Activity Feed)
+
+### Activity Feed
+- **GET /boards/:id/activity** - Returns chronological log of all activities on a board (requires authentication and board membership)
+- **GET /boards/:id/activity/preview** - Returns last 10 activities (no authentication required, for smoke testing)
+
+### Enhanced Card Operations  
+- **POST /cards/:id/move** - Move card with atomic activity logging
+- **POST /cards/:id/comments** - Add comment with atomic activity logging
+
+### Architecture Improvements
+- **Repository Layer**: All database operations abstracted behind repository interfaces
+- **Service Layer**: Business logic separated from HTTP handlers
+- **Centralized Auth**: JWT authentication middleware with configurable secret
+- **Transactional Integrity**: Card moves and comments use database transactions
+- **N+1 Query Fixes**: Optimized board queries with proper joins
+
+See `DESIGN.md` for detailed architectural decisions.
+
 ---
 
 ## Your instructions are in START.md
