@@ -1,4 +1,4 @@
-import { Request } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import * as jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-me'
@@ -13,4 +13,13 @@ export function verifyToken(req: Request): number {
 
 export function signToken(userId: number): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' })
+}
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    (req as any).userId = verifyToken(req)
+    next()
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' })
+  }
 }

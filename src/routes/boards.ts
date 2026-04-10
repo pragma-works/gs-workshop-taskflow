@@ -1,36 +1,20 @@
 import { Router, Request, Response } from 'express'
-import { verifyToken } from '../middleware/auth'
+import { requireAuth } from '../middleware/auth'
 import * as boardService from '../services/board.service'
 
 const router = Router()
 
 // GET /boards — list boards for current user
-router.get('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const boards = await boardService.listBoards(userId)
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+  const boards = await boardService.listBoards((req as any).userId)
   res.json(boards)
 })
 
 // GET /boards/:id — full board with lists, cards, comments
-router.get('/:id', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const boardId = parseInt(req.params.id)
-    const board = await boardService.getBoard(boardId, userId)
+    const board = await boardService.getBoard(boardId, (req as any).userId)
     res.json(board)
   } catch (err: any) {
     res.status(err.status || 500).json({ error: err.message })
@@ -38,29 +22,14 @@ router.get('/:id', async (req: Request, res: Response) => {
 })
 
 // POST /boards — create board
-router.post('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   const { name } = req.body
-  const board = await boardService.createBoard(name, userId)
+  const board = await boardService.createBoard(name, (req as any).userId)
   res.status(201).json(board)
 })
 
 // POST /boards/:id/members — add member
-router.post('/:id/members', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
+router.post('/:id/members', requireAuth, async (req: Request, res: Response) => {
   const boardId = parseInt(req.params.id)
   const { memberId } = req.body
   await boardService.addMember(boardId, memberId)
