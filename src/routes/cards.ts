@@ -1,18 +1,8 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import { verifyToken } from '../middleware/auth'
+import { getCardWithDetails, createCard, deleteCard, addComment, getList, moveCardAtomic } from '../services/cardService'
 
 const router = Router()
-
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
 
 // GET /cards/:id
 router.get('/:id', async (req: Request, res: Response) => {
@@ -23,20 +13,12 @@ router.get('/:id', async (req: Request, res: Response) => {
     return
   }
 
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
+  const card = await getCardWithDetails(parseInt(req.params.id))
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-  // ANTI-PATTERN: N+1 for labels
-  const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
-  const labels = []
-  for (const cl of cardLabels) {
-    const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
-    labels.push(label)
-  }
-  res.json({ ...card, comments, labels })
+  res.json(card)
 })
 
 // POST /cards — create card
@@ -49,15 +31,11 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   const { title, description, listId, assigneeId } = req.body
-  // ANTI-PATTERN: position not calculated — just appended with no ordering logic
-  const count = await prisma.card.count({ where: { listId } })
-  const card = await prisma.card.create({
-    data: { title, description, listId, assigneeId, position: count },
-  })
+  const card = await createCard({ title, description, listId, assigneeId })
   res.status(201).json(card)
 })
 
-// PATCH /cards/:id/move — move card to different list
+// PATCH /cards/:id/move — atomic transaction with ActivityEvent
 router.patch('/:id/move', async (req: Request, res: Response) => {
   let userId: number
   try {
@@ -70,25 +48,33 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
   const cardId = parseInt(req.params.id)
   const { targetListId, position } = req.body
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } })
+  const card = await getCardWithDetails(cardId)
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
   }
 
-  // ANTI-PATTERN: no ownership/membership check before moving
+  const targetList = await getList(targetListId)
+  if (!targetList) {
+    res.status(404).json({ error: 'Target list not found' })
+    return
+  }
 
   const fromListId = card.listId
 
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
-
-  // Log the move — in a separate write, outside any transaction
-  // (This is also where participants discover the desync risk)
-  console.log(`Card ${cardId} moved from list ${fromListId} to ${targetListId} by user ${userId}`)
-
-  res.json({ ok: true })
+  try {
+    const [, event] = await moveCardAtomic({
+      cardId,
+      targetListId,
+      position,
+      fromListId,
+      boardId: targetList.boardId,
+      actorId: userId,
+    })
+    res.json({ ok: true, event })
+  } catch (err) {
+    res.status(500).json({ error: 'Move failed', details: (err as Error).message })
+  }
 })
 
 // POST /cards/:id/comments — add comment
@@ -103,7 +89,7 @@ router.post('/:id/comments', async (req: Request, res: Response) => {
 
   const { content } = req.body
   const cardId = parseInt(req.params.id)
-  const comment = await prisma.comment.create({ data: { content, cardId, userId } })
+  const comment = await addComment(cardId, userId, content)
   res.status(201).json(comment)
 })
 
@@ -117,8 +103,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 
   const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
-  await prisma.card.delete({ where: { id: cardId } })
+  await deleteCard(cardId)
   res.json({ ok: true })
 })
 

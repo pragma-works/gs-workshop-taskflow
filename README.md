@@ -3,6 +3,28 @@
 A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
 move cards between them, and discuss work in comments.
 
+## What was built
+
+This implementation adds an **Activity Feed** feature on top of the base Kanban API:
+
+- `PATCH /cards/:id/move` — atomically moves a card to a target list and logs an `ActivityEvent` in a single Prisma transaction (no desync risk).
+- `GET /boards/:id/activity` — returns all activity events for a board in reverse chronological order (authenticated). Each event includes `actorName`, `cardTitle`, `fromListName`, and `toListName` loaded in a single query using Prisma `include`.
+- `GET /boards/:id/activity/preview` — same response shape, no authentication required (for testing).
+
+### Architecture
+
+Business logic lives in the service layer (`src/services/`), not in route handlers:
+
+| File | Responsibility |
+|------|---------------|
+| `src/middleware/auth.ts` | JWT verification; reads secret from `JWT_SECRET` env var |
+| `src/services/boardService.ts` | Board CRUD, membership and ownership checks |
+| `src/services/cardService.ts` | Card CRUD, atomic move with activity logging |
+| `src/services/userService.ts` | User registration and login (password never exposed) |
+| `src/services/activityService.ts` | Activity event creation and retrieval |
+
+See `docs/decisions/ADR-001-activity-feed.md` for design decisions.
+
 ---
 
 ## Your instructions are in START.md
