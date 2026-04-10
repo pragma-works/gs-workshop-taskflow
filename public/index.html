@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskflow - Kanban Board</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Auth Section -->
+        <div id="authSection" class="auth-section">
+            <div class="auth-container">
+                <h1>🎯 Taskflow</h1>
+                <p>Kanban Board with Activity Feed</p>
+                
+                <form id="loginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" placeholder="alice@test.com" value="alice@test.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" placeholder="password123" value="password123" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+                <div id="authError" class="error-message"></div>
+            </div>
+        </div>
+
+        <!-- Main App Section -->
+        <div id="appSection" class="app-section" style="display: none;">
+            <header class="header">
+                <div class="header-left">
+                    <h1>🎯 Taskflow</h1>
+                    <select id="boardSelect" class="board-select">
+                        <option value="">Loading boards...</option>
+                    </select>
+                </div>
+                <div class="header-right">
+                    <span id="userName" class="user-name"></span>
+                    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                </div>
+            </header>
+
+            <div class="main-content">
+                <!-- Kanban Board -->
+                <div class="board-section">
+                    <div id="kanban" class="kanban-container">
+                        <!-- Lists and cards will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Activity Feed Sidebar -->
+                <aside class="activity-sidebar">
+                    <div class="activity-header">
+                        <h2>📝 Activity Feed</h2>
+                        <button id="refreshActivityBtn" class="btn btn-small">🔄</button>
+                    </div>
+                    <div id="activityFeed" class="activity-feed">
+                        <!-- Activity events will be loaded here -->
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for adding comments -->
+    <div id="commentModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>Add Comment</h2>
+            <form id="commentForm" class="form-group">
+                <textarea id="commentText" placeholder="Enter your comment..." rows="4" required></textarea>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Comment</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeCommentModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

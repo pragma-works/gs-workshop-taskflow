@@ -1,10 +1,14 @@
 import express from 'express'
+import path from 'path'
 import boardsRouter from './routes/boards'
 import cardsRouter  from './routes/cards'
 import usersRouter  from './routes/users'
 
 const app = express()
 app.use(express.json())
+
+// Serve static files from public folder
+app.use(express.static(path.join(__dirname, '..', 'public')))
 
 app.use('/users',  usersRouter)
 app.use('/boards', boardsRouter)
