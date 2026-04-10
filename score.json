@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "3f29237",
+    "commit": "dd9408e",
     "branch": "participant/P027",
-    "timestamp": "2026-04-10T21:54:59.716Z",
+    "timestamp": "2026-04-10T22:30:19.864Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -15,9 +15,8 @@
     "bounded": {
       "score": 0,
       "max": 2,
-      "details": "43 direct DB calls found — repository layer missing",
+      "details": "29 direct DB calls found — repository layer missing",
       "violations": [
-        "src/routes/activity.ts",
         "src/routes/boards.ts",
         "src/routes/cards.ts",
         "src/routes/users.ts",
@@ -27,10 +26,10 @@
     "verifiable": {
       "score": 1,
       "max": 2,
-      "details": "Tests: 16 passed, 0 failed | Coverage: 30.1%",
+      "details": "Tests: 16 passed, 0 failed | Coverage: 38.6%",
       "testsPassed": 16,
       "testsFailed": 0,
-      "coveragePct": 30.15
+      "coveragePct": 38.56
     },
     "defended": {
       "score": 1,
@@ -40,7 +39,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 37/37 (100%) | Decision log: present",
+      "details": "Conventional commits: 40/40 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -77,9 +76,9 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 0,
-    "duplicatePct": 6.45,
-    "branchCount": 27,
-    "testCoverage": 30.15,
+    "duplicatePct": 4.65,
+    "branchCount": 38,
+    "testCoverage": 38.56,
     "testCount": 16,
     "depCount": 4
   }
