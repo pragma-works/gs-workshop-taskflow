@@ -1,20 +1,9 @@
 import { Router, Request, Response } from 'express'
 import * as bcrypt from 'bcryptjs'
-import * as jwt from 'jsonwebtoken'
 import prisma from '../db'
+import { generateToken } from '../middleware/auth'
 
 const router = Router()
-
-// ANTI-PATTERN: auth helper copy-pasted from boards.ts and cards.ts
-// All three files have identical copies — single change requires 3 edits
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret — same string in boards.ts and cards.ts
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
 
 // POST /users/register
 router.post('/register', async (req: Request, res: Response) => {
@@ -38,7 +27,7 @@ router.post('/login', async (req: Request, res: Response) => {
     res.status(401).json({ error: 'Invalid credentials' })
     return
   }
-  const token = jwt.sign({ userId: user.id }, 'super-secret-key-change-me', { expiresIn: '7d' })
+  const token = generateToken(user.id)
   res.json({ token })
 })
 
