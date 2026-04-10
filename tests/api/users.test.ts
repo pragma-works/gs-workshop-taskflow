@@ -29,4 +29,26 @@ describe('user registration', () => {
     })
     expect(response.body.password).toBeUndefined()
   })
+
+  it('returns public user fields without the password hash when a caller fetches a user', async () => {
+    testContext = await createTestContext('users-get')
+
+    const user = await testContext.prisma.user.create({
+      data: {
+        email: 'existing-user@test.com',
+        password: 'hashed-password',
+        name: 'Existing User',
+      },
+    })
+
+    const response = await request(testContext.app).get(`/users/${user.id}`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      id: user.id,
+      email: 'existing-user@test.com',
+      name: 'Existing User',
+    })
+    expect(response.body.password).toBeUndefined()
+  })
 })
