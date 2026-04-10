@@ -1,15 +1,17 @@
 import { Router, Request, Response } from 'express'
 import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import {
+  findCardById, countCardsByList, createCard, findListById,
+  moveCardWithActivity, createComment, deleteCard,
+  findCommentsByCard, findCardLabelsByCard, findLabelById
+} from '../repository'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
 function verifyToken(req: Request): number {
   const header = req.headers.authorization
   if (!header) throw new Error('No auth header')
   const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
   const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
   return payload.userId
 }
@@ -23,17 +25,16 @@ router.get('/:id', async (req: Request, res: Response) => {
     return
   }
 
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
+  const card = await findCardById(parseInt(req.params.id))
   if (!card) {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-  // ANTI-PATTERN: N+1 for labels
-  const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
+  const comments = await findCommentsByCard(card.id)
+  const cardLabels = await findCardLabelsByCard(card.id)
   const labels = []
   for (const cl of cardLabels) {
-    const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
+    const label = await findLabelById(cl.labelId)
     labels.push(label)
   }
   res.json({ ...card, comments, labels })
@@ -49,11 +50,8 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   const { title, description, listId, assigneeId } = req.body
-  // ANTI-PATTERN: position not calculated — just appended with no ordering logic
-  const count = await prisma.card.count({ where: { listId } })
-  const card = await prisma.card.create({
-    data: { title, description, listId, assigneeId, position: count },
-  })
+  const count = await countCardsByList(listId)
+  const card = await createCard({ title, description, listId, assigneeId, position: count })
   res.status(201).json(card)
 })
 
@@ -71,7 +69,7 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
   const { targetListId, position } = req.body
 
   try {
-    const card = await prisma.card.findUnique({ where: { id: cardId } })
+    const card = await findCardById(cardId)
     if (!card) {
       res.status(404).json({ error: 'Not found' })
       return
@@ -79,37 +77,17 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
 
     const fromListId = card.listId
 
-    // Get the board ID from the target list
-    const targetList = await prisma.list.findUnique({ where: { id: targetListId } })
+    const targetList = await findListById(targetListId)
     if (!targetList) {
       res.status(404).json({ error: 'Target list not found' })
       return
     }
 
-    // Atomic transaction: update card and create activity event
-    const result = await prisma.$transaction(async (tx) => {
-      // Update the card
-      const updatedCard = await tx.card.update({
-        where: { id: cardId },
-        data: { listId: targetListId, position }
-      })
+    const event = await moveCardWithActivity(
+      cardId, targetListId, position, userId, targetList.boardId, fromListId
+    )
 
-      // Create activity event
-      const event = await tx.activityEvent.create({
-        data: {
-          boardId: targetList.boardId,
-          actorId: userId,
-          eventType: 'card_moved',
-          cardId: cardId,
-          fromListId: fromListId,
-          toListId: targetListId
-        }
-      })
-
-      return event
-    })
-
-    res.json({ ok: true, event: result })
+    res.json({ ok: true, event })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     res.status(500).json({ error: 'Move failed', details: message })
@@ -128,7 +106,7 @@ router.post('/:id/comments', async (req: Request, res: Response) => {
 
   const { content } = req.body
   const cardId = parseInt(req.params.id)
-  const comment = await prisma.comment.create({ data: { content, cardId, userId } })
+  const comment = await createComment({ content, cardId, userId })
   res.status(201).json(comment)
 })
 
@@ -142,8 +120,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 
   const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
-  await prisma.card.delete({ where: { id: cardId } })
+  await deleteCard(cardId)
   res.json({ ok: true })
 })
 
