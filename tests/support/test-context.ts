@@ -3,7 +3,7 @@ import { mkdirSync, rmSync } from 'fs'
 import path from 'path'
 
 import type { Express } from 'express'
-import type { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import { vi } from 'vitest'
 
@@ -32,17 +32,22 @@ export async function createTestContext(name: string): Promise<TestContext> {
   })
 
   vi.resetModules()
+  const databaseClient = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  })
 
-  const [{ default: app }, { default: prisma }] = await Promise.all([
-    import('../../src/index'),
-    import('../../src/db'),
-  ])
+  const { createApp } = await import('../../src/app')
+  const app = createApp({ databaseClient })
 
   return {
     app,
-    prisma,
+    prisma: databaseClient,
     cleanup: async () => {
-      await prisma.$disconnect()
+      await databaseClient.$disconnect()
       rmSync(path.join(process.cwd(), databaseRelativePath), { force: true })
       vi.resetModules()
     },
