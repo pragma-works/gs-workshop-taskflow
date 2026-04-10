@@ -103,8 +103,8 @@ Vitest and Supertest were added, the app entry point was made testable, and the 
 
 ### Metrics
 
-- Test count: 4
-- Direct Prisma calls remaining in `src/routes`: 42
+- Test count at workshop completion: 4
+- Direct Prisma calls remaining in `src/routes` at workshop completion: 42
 - Feature working: Y
 
 ### Functional Validation
@@ -118,6 +118,42 @@ The feature was validated end-to-end by:
 ### Observation About The Process
 
 The prompts were sufficient to implement the feature, but additional engineering judgment was needed to make the result testable, consistent, and maintainable.
+
+## Post-Workshop Hardening
+
+After completing the requested exercise and validating the README checks, an additional hardening pass was performed to align the codebase with stronger engineering standards.
+
+### Additional Improvements
+
+- shared JWT configuration and token helpers were introduced
+- route handlers were slimmed down and delegated to service modules
+- global JSON error handling was added
+- user responses were sanitized to avoid exposing password hashes
+- authorization rules were tightened for board access and membership-sensitive operations
+- integration test helpers were extracted and the test suite was expanded
+- architecture documentation, ADRs, and a system diagram were added
+
+### Updated Metrics After Hardening
+
+- Automated tests: 7
+- Direct Prisma calls remaining in production `src/routes`: 0
+- TypeScript type-check: passing
+- Application startup: passing
+
+### Documentation Added
+
+- `docs/README.md`
+- `docs/architecture/solution-overview.md`
+- `docs/architecture/system-diagram.md`
+- `docs/architecture/post-implementation-review.md`
+- `docs/architecture/testing-strategy.md`
+- `docs/adr/0001-activity-event-persistence-and-atomic-card-move.md`
+- `docs/adr/0002-in-memory-sqlite-integration-tests.md`
+- `docs/adr/0003-thin-routes-shared-auth-and-global-error-handling.md`
+
+### Final Internal Observation
+
+The original prompts were enough to deliver the feature, but they were not enough to reach a clean, maintainable, and defendable implementation by themselves. The best results came from treating the prompts as a delivery baseline and then applying an explicit hardening pass for architecture, safety, testing, and documentation.
 
 ## Notes
 
