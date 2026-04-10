@@ -1,6 +1,10 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
-import type { BoardDetailsRecord, BoardRecord } from '../domain/models'
-import type { BoardRepository, BoardRole } from '../services/boards-service'
+import type { BoardDetailsRecord, BoardRecord, BoardRole } from '../domain/models'
+import type { BoardAccessRepository } from '../services/board-access-service'
+import type {
+  BoardMembershipRepository,
+  BoardReadRepository,
+} from '../services/boards-service'
 
 type BoardRecordWithDetails = Prisma.BoardGetPayload<{
   include: {
@@ -22,7 +26,9 @@ type BoardRecordWithDetails = Prisma.BoardGetPayload<{
 }>
 
 /** Prisma implementation of board persistence operations. */
-export class PrismaBoardRepository implements BoardRepository {
+export class PrismaBoardRepository
+  implements BoardReadRepository, BoardMembershipRepository, BoardAccessRepository
+{
   /** @param prismaClient Prisma client instance for database access. */
   public constructor(private readonly prismaClient: PrismaClient) {}
 

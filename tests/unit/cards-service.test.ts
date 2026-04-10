@@ -3,6 +3,7 @@ import {
   BadRequestError,
   ForbiddenError,
 } from '../../src/errors/application-error'
+import type { BoardAccessAuthorizer } from '../../src/services/board-access-service'
 import { CardsService, type CardRepository } from '../../src/services/cards-service'
 
 describe('CardsService', () => {
@@ -32,18 +33,23 @@ describe('CardsService', () => {
         name: 'Backlog',
         position: 0,
       }),
-      findMemberRole: vi.fn().mockResolvedValue('member'),
       findNextPosition: vi.fn().mockResolvedValue(4),
       moveCard: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn().mockResolvedValue(undefined),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new CardsService(cardRepository)
+    const service = new CardsService(cardRepository, boardAccessAuthorizer)
     const card = await service.createCard(1, {
       listId: 2,
       title: 'New card',
     })
 
     expect(card.position).toBe(4)
+    expect(boardAccessAuthorizer.assertBoardMember).toHaveBeenCalledWith(1, 5)
     expect(cardRepository.createCard).toHaveBeenCalledWith({
       listId: 2,
       position: 4,
@@ -59,17 +65,22 @@ describe('CardsService', () => {
       findCardById: vi.fn(),
       findCardDetailsById: vi.fn(),
       findListById: vi.fn(),
-      findMemberRole: vi.fn(),
       findNextPosition: vi.fn(),
       moveCard: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn(),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new CardsService(cardRepository)
+    const service = new CardsService(cardRepository, boardAccessAuthorizer)
 
     await expect(
       service.moveCard(1, 2, { position: -1, targetListId: 7 }),
     ).rejects.toBeInstanceOf(BadRequestError)
     expect(cardRepository.findCardById).not.toHaveBeenCalled()
+    expect(boardAccessAuthorizer.assertBoardMember).not.toHaveBeenCalled()
   })
 
   it('rejects moves to lists in a different board', async () => {
@@ -95,12 +106,16 @@ describe('CardsService', () => {
         name: 'Foreign',
         position: 0,
       }),
-      findMemberRole: vi.fn().mockResolvedValue('member'),
       findNextPosition: vi.fn(),
       moveCard: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn().mockResolvedValue(undefined),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new CardsService(cardRepository)
+    const service = new CardsService(cardRepository, boardAccessAuthorizer)
 
     await expect(
       service.moveCard(1, 2, { position: 0, targetListId: 7 }),
@@ -126,12 +141,16 @@ describe('CardsService', () => {
       }),
       findCardDetailsById: vi.fn(),
       findListById: vi.fn(),
-      findMemberRole: vi.fn().mockResolvedValue(null),
       findNextPosition: vi.fn(),
       moveCard: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn().mockRejectedValue(new ForbiddenError('Not a board member')),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new CardsService(cardRepository)
+    const service = new CardsService(cardRepository, boardAccessAuthorizer)
 
     await expect(service.getCard(4, 2)).rejects.toBeInstanceOf(ForbiddenError)
   })

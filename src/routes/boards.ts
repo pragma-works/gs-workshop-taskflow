@@ -1,17 +1,16 @@
-import { Router } from 'express'
-import type { TokenService } from '../auth/token-service'
-import {
-  authenticateRequest,
-  getAuthenticatedUserId,
-} from '../middleware/authenticate-request'
+import { Router, type RequestHandler } from 'express'
+import { getAuthenticatedUserId } from '../middleware/authenticate-request'
 import type { BoardsService } from '../services/boards-service'
 import { asyncRouteHandler } from './async-route-handler'
 import { parseIntegerParameter, requireInteger, requireNonEmptyString } from './request-parsing'
 
 /** Creates board routes backed by the boards service. */
-export function createBoardsRouter(boardsService: BoardsService, tokenService: TokenService): Router {
+export function createBoardsRouter(
+  boardsService: BoardsService,
+  authenticatedRoute: RequestHandler,
+): Router {
   const router = Router()
-  router.use(authenticateRequest(tokenService))
+  router.use(authenticatedRoute)
 
   router.get(
     '/',

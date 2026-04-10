@@ -6,6 +6,8 @@ export interface UserRecord {
   readonly password: string
 }
 
+export type BoardRole = 'member' | 'owner'
+
 export interface BoardRecord {
   readonly createdAt: Date
   readonly id: number

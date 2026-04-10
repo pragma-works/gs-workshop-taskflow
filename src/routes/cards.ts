@@ -1,9 +1,5 @@
-import { Router } from 'express'
-import type { TokenService } from '../auth/token-service'
-import {
-  authenticateRequest,
-  getAuthenticatedUserId,
-} from '../middleware/authenticate-request'
+import { Router, type RequestHandler } from 'express'
+import { getAuthenticatedUserId } from '../middleware/authenticate-request'
 import type { CardsService } from '../services/cards-service'
 import { asyncRouteHandler } from './async-route-handler'
 import {
@@ -15,9 +11,24 @@ import {
 } from './request-parsing'
 
 /** Creates card routes backed by the cards service. */
-export function createCardsRouter(cardsService: CardsService, tokenService: TokenService): Router {
+export function createCardsRouter(
+  cardsService: CardsService,
+  authenticatedRoute: RequestHandler,
+): Router {
   const router = Router()
-  router.use(authenticateRequest(tokenService))
+  router.use(authenticatedRoute)
+  const moveCardHandler = asyncRouteHandler(async (request, response) => {
+    await cardsService.moveCard(
+      getAuthenticatedUserId(request),
+      parseIntegerParameter(request.params.id, 'cardId'),
+      {
+        position: requireInteger(request.body?.position, 'position'),
+        targetListId: requireInteger(request.body?.targetListId, 'targetListId'),
+      },
+    )
+
+    response.json({ ok: true })
+  })
 
   router.get(
     '/:id',
@@ -45,37 +56,9 @@ export function createCardsRouter(cardsService: CardsService, tokenService: Toke
     }),
   )
 
-  router.patch(
-    '/:id/move',
-    asyncRouteHandler(async (request, response) => {
-      await cardsService.moveCard(
-        getAuthenticatedUserId(request),
-        parseIntegerParameter(request.params.id, 'cardId'),
-        {
-          position: requireInteger(request.body?.position, 'position'),
-          targetListId: requireInteger(request.body?.targetListId, 'targetListId'),
-        },
-      )
+  router.patch('/:id/move', moveCardHandler)
 
-      response.json({ ok: true })
-    }),
-  )
-
-  router.post(
-    '/:id/move',
-    asyncRouteHandler(async (request, response) => {
-      await cardsService.moveCard(
-        getAuthenticatedUserId(request),
-        parseIntegerParameter(request.params.id, 'cardId'),
-        {
-          position: requireInteger(request.body?.position, 'position'),
-          targetListId: requireInteger(request.body?.targetListId, 'targetListId'),
-        },
-      )
-
-      response.json({ ok: true })
-    }),
-  )
+  router.post('/:id/move', moveCardHandler)
 
   router.post(
     '/:id/comments',

@@ -5,7 +5,8 @@ import type {
   CommentRecord,
   ListRecord,
 } from '../domain/models'
-import { BadRequestError, ForbiddenError, NotFoundError } from '../errors/application-error'
+import { BadRequestError, NotFoundError } from '../errors/application-error'
+import type { BoardAccessAuthorizer } from './board-access-service'
 
 export interface CreateCardInput {
   readonly assigneeId?: number
@@ -21,10 +22,6 @@ export interface CreateCardRecord extends CreateCardInput {
 export interface MoveCardInput {
   readonly position: number
   readonly targetListId: number
-}
-
-export interface AddCommentInput {
-  readonly content: string
 }
 
 export interface MoveCardActivity {
@@ -45,7 +42,6 @@ export interface CardRepository {
   findCardById(cardId: number): Promise<CardWithBoardRecord | null>
   findCardDetailsById(cardId: number): Promise<CardDetailsRecord | null>
   findListById(listId: number): Promise<ListRecord | null>
-  findMemberRole(userId: number, boardId: number): Promise<'member' | 'owner' | null>
   findNextPosition(listId: number): Promise<number>
   moveCard(
     cardId: number,
@@ -55,15 +51,21 @@ export interface CardRepository {
   ): Promise<void>
 }
 
-/** Coordinates card operations with board membership checks. */
+/** Coordinates card operations with shared board authorization. */
 export class CardsService {
-  /** @param cardRepository Persistence port for cards and lists. */
-  public constructor(private readonly cardRepository: CardRepository) {}
+  /**
+   * @param cardRepository Persistence port for cards and lists.
+   * @param boardAccessAuthorizer Shared board authorization policy.
+   */
+  public constructor(
+    private readonly cardRepository: CardRepository,
+    private readonly boardAccessAuthorizer: BoardAccessAuthorizer,
+  ) {}
 
   /** Returns a card with comments and labels for a board member. */
   public async getCard(userId: number, cardId: number): Promise<CardDetailsRecord> {
     const cardRecord = await this.getCardRecord(cardId)
-    await this.assertBoardMember(userId, cardRecord.list.boardId)
+    await this.boardAccessAuthorizer.assertBoardMember(userId, cardRecord.list.boardId)
 
     const card = await this.cardRepository.findCardDetailsById(cardId)
     if (card === null) {
@@ -80,7 +82,7 @@ export class CardsService {
       throw new NotFoundError('List not found', { listId: input.listId })
     }
 
-    await this.assertBoardMember(userId, list.boardId)
+    await this.boardAccessAuthorizer.assertBoardMember(userId, list.boardId)
 
     const position = await this.cardRepository.findNextPosition(input.listId)
     return this.cardRepository.createCard({ ...input, position })
@@ -98,7 +100,7 @@ export class CardsService {
       throw new NotFoundError('List not found', { listId: input.targetListId })
     }
 
-    await this.assertBoardMember(userId, card.list.boardId)
+    await this.boardAccessAuthorizer.assertBoardMember(userId, card.list.boardId)
 
     if (targetList.boardId !== card.list.boardId) {
       throw new BadRequestError('Target list must belong to the same board', {
@@ -121,7 +123,7 @@ export class CardsService {
     input: AddCommentInput,
   ): Promise<CommentRecord> {
     const card = await this.getCardRecord(cardId)
-    await this.assertBoardMember(userId, card.list.boardId)
+    await this.boardAccessAuthorizer.assertBoardMember(userId, card.list.boardId)
 
     return this.cardRepository.createComment(cardId, userId, card.list.boardId, input.content)
   }
@@ -129,7 +131,7 @@ export class CardsService {
   /** Deletes a card and its dependent records after authorization. */
   public async deleteCard(userId: number, cardId: number): Promise<void> {
     const card = await this.getCardRecord(cardId)
-    await this.assertBoardMember(userId, card.list.boardId)
+    await this.boardAccessAuthorizer.assertBoardMember(userId, card.list.boardId)
 
     await this.cardRepository.deleteCard(cardId)
   }
@@ -142,11 +144,8 @@ export class CardsService {
 
     return card
   }
+}
 
-  private async assertBoardMember(userId: number, boardId: number): Promise<void> {
-    const role = await this.cardRepository.findMemberRole(userId, boardId)
-    if (role === null) {
-      throw new ForbiddenError('Not a board member', { boardId, userId })
-    }
-  }
+export interface AddCommentInput {
+  readonly content: string
 }

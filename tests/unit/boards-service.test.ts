@@ -4,10 +4,12 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../../src/errors/application-error'
+import type { BoardAccessAuthorizer } from '../../src/services/board-access-service'
 import {
   BoardsService,
   type BoardDetails,
-  type BoardRepository,
+  type BoardMembershipRepository,
+  type BoardReadRepository,
   type UserLookupRepository,
 } from '../../src/services/boards-service'
 
@@ -16,23 +18,34 @@ describe('BoardsService', () => {
     vi.clearAllMocks()
   })
 
-  it('returns not found before checking membership when the board does not exist', async () => {
-    const boardRepository: BoardRepository = {
-      addMember: vi.fn(),
+  it('stops after authorization rejects a missing board', async () => {
+    const boardReadRepository: BoardReadRepository = {
       createBoard: vi.fn(),
-      findBoardById: vi.fn().mockResolvedValue(null),
       findBoardDetails: vi.fn(),
       findBoardsForUser: vi.fn(),
+    }
+    const boardMembershipRepository: BoardMembershipRepository = {
+      addMember: vi.fn(),
       findMemberRole: vi.fn(),
     }
     const userLookupRepository: UserLookupRepository = {
       findById: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn().mockRejectedValue(new NotFoundError('Board not found', { boardId: 99 })),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new BoardsService(boardRepository, userLookupRepository)
+    const service = new BoardsService(
+      boardReadRepository,
+      boardMembershipRepository,
+      userLookupRepository,
+      boardAccessAuthorizer,
+    )
 
     await expect(service.getBoardById(1, 99)).rejects.toBeInstanceOf(NotFoundError)
-    expect(boardRepository.findMemberRole).not.toHaveBeenCalled()
+    expect(boardReadRepository.findBoardDetails).not.toHaveBeenCalled()
   })
 
   it('returns board details for board members', async () => {
@@ -42,46 +55,61 @@ describe('BoardsService', () => {
       lists: [],
       name: 'Board',
     }
-    const boardRepository: BoardRepository = {
-      addMember: vi.fn(),
+    const boardReadRepository: BoardReadRepository = {
       createBoard: vi.fn(),
-      findBoardById: vi.fn().mockResolvedValue({
-        createdAt: new Date(),
-        id: 3,
-        name: 'Board',
-      }),
       findBoardDetails: vi.fn().mockResolvedValue(boardDetails),
       findBoardsForUser: vi.fn(),
-      findMemberRole: vi.fn().mockResolvedValue('member'),
+    }
+    const boardMembershipRepository: BoardMembershipRepository = {
+      addMember: vi.fn(),
+      findMemberRole: vi.fn(),
     }
     const userLookupRepository: UserLookupRepository = {
       findById: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn().mockResolvedValue(undefined),
+      assertBoardOwner: vi.fn(),
+    }
 
-    const service = new BoardsService(boardRepository, userLookupRepository)
+    const service = new BoardsService(
+      boardReadRepository,
+      boardMembershipRepository,
+      userLookupRepository,
+      boardAccessAuthorizer,
+    )
     const result = await service.getBoardById(1, 3)
 
     expect(result).toBe(boardDetails)
+    expect(boardAccessAuthorizer.assertBoardMember).toHaveBeenCalledWith(1, 3)
   })
 
   it('only allows board owners to add members', async () => {
-    const boardRepository: BoardRepository = {
-      addMember: vi.fn(),
+    const boardReadRepository: BoardReadRepository = {
       createBoard: vi.fn(),
-      findBoardById: vi.fn().mockResolvedValue({
-        createdAt: new Date(),
-        id: 3,
-        name: 'Board',
-      }),
       findBoardDetails: vi.fn(),
       findBoardsForUser: vi.fn(),
-      findMemberRole: vi.fn().mockResolvedValue('member'),
+    }
+    const boardMembershipRepository: BoardMembershipRepository = {
+      addMember: vi.fn(),
+      findMemberRole: vi.fn(),
     }
     const userLookupRepository: UserLookupRepository = {
       findById: vi.fn(),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn(),
+      assertBoardOwner: vi.fn().mockRejectedValue(new ForbiddenError('Not allowed')),
+    }
 
-    const service = new BoardsService(boardRepository, userLookupRepository)
+    const service = new BoardsService(
+      boardReadRepository,
+      boardMembershipRepository,
+      userLookupRepository,
+      boardAccessAuthorizer,
+    )
 
     await expect(service.addMemberToBoard(1, 3, { memberId: 9 })).rejects.toBeInstanceOf(
       ForbiddenError,
@@ -90,26 +118,30 @@ describe('BoardsService', () => {
   })
 
   it('rejects duplicate board memberships', async () => {
-    const boardRepository: BoardRepository = {
-      addMember: vi.fn(),
+    const boardReadRepository: BoardReadRepository = {
       createBoard: vi.fn(),
-      findBoardById: vi.fn().mockResolvedValue({
-        createdAt: new Date(),
-        id: 3,
-        name: 'Board',
-      }),
       findBoardDetails: vi.fn(),
       findBoardsForUser: vi.fn(),
-      findMemberRole: vi
-        .fn()
-        .mockResolvedValueOnce('owner')
-        .mockResolvedValueOnce('member'),
+    }
+    const boardMembershipRepository: BoardMembershipRepository = {
+      addMember: vi.fn(),
+      findMemberRole: vi.fn().mockResolvedValue('member'),
     }
     const userLookupRepository: UserLookupRepository = {
       findById: vi.fn().mockResolvedValue({ id: 9 }),
     }
+    const boardAccessAuthorizer: BoardAccessAuthorizer = {
+      assertBoardExists: vi.fn(),
+      assertBoardMember: vi.fn(),
+      assertBoardOwner: vi.fn().mockResolvedValue(undefined),
+    }
 
-    const service = new BoardsService(boardRepository, userLookupRepository)
+    const service = new BoardsService(
+      boardReadRepository,
+      boardMembershipRepository,
+      userLookupRepository,
+      boardAccessAuthorizer,
+    )
 
     await expect(service.addMemberToBoard(1, 3, { memberId: 9 })).rejects.toBeInstanceOf(
       ConflictError,

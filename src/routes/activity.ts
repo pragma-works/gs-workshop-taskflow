@@ -1,9 +1,5 @@
-import { Router } from 'express'
-import type { TokenService } from '../auth/token-service'
-import {
-  authenticateRequest,
-  getAuthenticatedUserId,
-} from '../middleware/authenticate-request'
+import { Router, type RequestHandler } from 'express'
+import { getAuthenticatedUserId } from '../middleware/authenticate-request'
 import type { ActivityService } from '../services/activity-service'
 import { asyncRouteHandler } from './async-route-handler'
 import { parseIntegerParameter } from './request-parsing'
@@ -11,7 +7,7 @@ import { parseIntegerParameter } from './request-parsing'
 /** Creates board activity feed routes. */
 export function createActivityRouter(
   activityService: ActivityService,
-  tokenService: TokenService,
+  authenticatedRoute: RequestHandler,
 ): Router {
   const router = Router()
 
@@ -28,7 +24,7 @@ export function createActivityRouter(
 
   router.get(
     '/:id/activity',
-    authenticateRequest(tokenService),
+    authenticatedRoute,
     asyncRouteHandler(async (request, response) => {
       const events = await activityService.getBoardActivity(
         getAuthenticatedUserId(request),

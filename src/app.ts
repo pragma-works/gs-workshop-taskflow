@@ -1,5 +1,6 @@
 import express from 'express'
 import type { TokenService } from './auth/token-service'
+import { authenticateRequest } from './middleware/authenticate-request'
 import { createActivityRouter } from './routes/activity'
 import { errorHandler, notFoundHandler } from './routes/error-handler'
 import { createBoardsRouter } from './routes/boards'
@@ -21,12 +22,13 @@ export interface ApplicationServices {
 /** Creates the Express application with all routes and middleware. */
 export function createApp(services: ApplicationServices) {
   const app = express()
+  const authenticatedRoute = authenticateRequest(services.tokenService)
   app.use(express.json())
 
   app.use('/users', createUsersRouter(services.usersService))
-  app.use('/boards', createActivityRouter(services.activityService, services.tokenService))
-  app.use('/boards', createBoardsRouter(services.boardsService, services.tokenService))
-  app.use('/cards', createCardsRouter(services.cardsService, services.tokenService))
+  app.use('/boards', createActivityRouter(services.activityService, authenticatedRoute))
+  app.use('/boards', createBoardsRouter(services.boardsService, authenticatedRoute))
+  app.use('/cards', createCardsRouter(services.cardsService, authenticatedRoute))
 
   app.use(notFoundHandler)
   app.use(errorHandler)

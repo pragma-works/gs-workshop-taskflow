@@ -7,14 +7,7 @@ import { mkdirSync, rmSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { TokenService } from '../../src/auth/token-service'
 import { createApp } from '../../src/app'
-import { PrismaActivityRepository } from '../../src/repositories/prisma-activity-repository'
-import { PrismaBoardRepository } from '../../src/repositories/prisma-board-repository'
-import { PrismaCardRepository } from '../../src/repositories/prisma-card-repository'
-import { PrismaUserRepository } from '../../src/repositories/prisma-user-repository'
-import { ActivityService } from '../../src/services/activity-service'
-import { BoardsService } from '../../src/services/boards-service'
-import { CardsService } from '../../src/services/cards-service'
-import { UsersService } from '../../src/services/users-service'
+import { createApplicationServicesFromDatabase } from '../../src/repositories/create-application-services'
 
 const TEST_JWT_SECRET = 'test-secret'
 const REPOSITORY_ROOT = process.cwd()
@@ -52,19 +45,7 @@ export async function createTestApplication(): Promise<TestApplication> {
 
   const prismaClient = new PrismaClient()
   const tokenService = new TokenService(TEST_JWT_SECRET)
-
-  const userRepository = new PrismaUserRepository(prismaClient)
-  const boardRepository = new PrismaBoardRepository(prismaClient)
-  const cardRepository = new PrismaCardRepository(prismaClient)
-  const activityRepository = new PrismaActivityRepository(prismaClient)
-
-  const app = createApp({
-    activityService: new ActivityService(boardRepository, activityRepository),
-    boardsService: new BoardsService(boardRepository, userRepository),
-    cardsService: new CardsService(cardRepository),
-    tokenService,
-    usersService: new UsersService(userRepository, tokenService),
-  })
+  const app = createApp(createApplicationServicesFromDatabase(prismaClient, TEST_JWT_SECRET))
 
   const seededData = await seedTestData(prismaClient, tokenService)
 

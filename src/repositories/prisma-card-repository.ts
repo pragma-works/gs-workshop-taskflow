@@ -1,4 +1,10 @@
 import type { Prisma, PrismaClient } from '@prisma/client'
+import {
+  ActivityActionType,
+  createCardMovedActivityMeta,
+  createCommentAddedActivityMeta,
+  serializeActivityMeta,
+} from '../domain/activity-events'
 import type {
   CardDetailsRecord,
   CardRecord,
@@ -11,7 +17,6 @@ import type {
   CreateCardRecord,
   MoveCardActivity,
 } from '../services/cards-service'
-import type { BoardRole } from '../services/boards-service'
 
 type CardRecordWithDetails = Prisma.CardGetPayload<{
   include: {
@@ -91,11 +96,9 @@ export class PrismaCardRepository implements CardRepository {
     position: number,
     activity: MoveCardActivity,
   ): Promise<void> {
-    const meta = JSON.stringify({
-      fromListId: activity.fromListId,
-      position,
-      toListId: targetListId,
-    })
+    const meta = serializeActivityMeta(
+      createCardMovedActivityMeta(activity.fromListId, targetListId, position),
+    )
 
     await this.prismaClient.$transaction(async (transaction) => {
       await transaction.card.update({
@@ -105,7 +108,7 @@ export class PrismaCardRepository implements CardRepository {
 
       await transaction.activityEvent.create({
         data: {
-          action: 'card_moved',
+          action: ActivityActionType.CARD_MOVED,
           boardId: activity.boardId,
           cardId,
           meta,
@@ -133,10 +136,10 @@ export class PrismaCardRepository implements CardRepository {
 
       await transaction.activityEvent.create({
         data: {
-          action: 'comment_added',
+          action: ActivityActionType.COMMENT_ADDED,
           boardId,
           cardId,
-          meta: JSON.stringify({ commentId: comment.id }),
+          meta: serializeActivityMeta(createCommentAddedActivityMeta(comment.id)),
           userId,
         },
       })
@@ -154,18 +157,6 @@ export class PrismaCardRepository implements CardRepository {
     ])
   }
 
-  /** Finds a member role for authorization checks. */
-  public async findMemberRole(userId: number, boardId: number): Promise<BoardRole | null> {
-    const membership = await this.prismaClient.boardMember.findUnique({
-      where: { userId_boardId: { boardId, userId } },
-    })
-
-    if (membership === null) {
-      return null
-    }
-
-    return membership.role === 'owner' || membership.role === 'member' ? membership.role : null
-  }
 }
 
 function mapCardDetails(card: CardRecordWithDetails): CardDetailsRecord {
