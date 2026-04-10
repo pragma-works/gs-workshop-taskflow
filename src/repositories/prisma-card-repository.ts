@@ -1,8 +1,13 @@
-import type { Card, Comment, List, Prisma, PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import type {
-  CardDetails,
+  CardDetailsRecord,
+  CardRecord,
+  CardWithBoardRecord,
+  CommentRecord,
+  ListRecord,
+} from '../domain/models'
+import type {
   CardRepository,
-  CardWithBoard,
   CreateCardRecord,
   MoveCardActivity,
 } from '../services/cards-service'
@@ -25,7 +30,7 @@ export class PrismaCardRepository implements CardRepository {
   public constructor(private readonly prismaClient: PrismaClient) {}
 
   /** Finds a card together with the owning board id. */
-  public async findCardById(cardId: number): Promise<CardWithBoard | null> {
+  public async findCardById(cardId: number): Promise<CardWithBoardRecord | null> {
     const card = await this.prismaClient.card.findUnique({
       include: {
         list: {
@@ -42,7 +47,7 @@ export class PrismaCardRepository implements CardRepository {
   }
 
   /** Finds a card with comments and labels. */
-  public async findCardDetailsById(cardId: number): Promise<CardDetails | null> {
+  public async findCardDetailsById(cardId: number): Promise<CardDetailsRecord | null> {
     const card = await this.prismaClient.card.findUnique({
       include: {
         comments: {
@@ -60,7 +65,7 @@ export class PrismaCardRepository implements CardRepository {
   }
 
   /** Finds a list by id. */
-  public findListById(listId: number): Promise<List | null> {
+  public async findListById(listId: number): Promise<ListRecord | null> {
     return this.prismaClient.list.findUnique({ where: { id: listId } })
   }
 
@@ -75,7 +80,7 @@ export class PrismaCardRepository implements CardRepository {
   }
 
   /** Creates a card. */
-  public createCard(input: CreateCardRecord): Promise<Card> {
+  public async createCard(input: CreateCardRecord): Promise<CardRecord> {
     return this.prismaClient.card.create({ data: input })
   }
 
@@ -116,7 +121,7 @@ export class PrismaCardRepository implements CardRepository {
     userId: number,
     boardId: number,
     content: string,
-  ): Promise<Comment> {
+  ): Promise<CommentRecord> {
     return this.prismaClient.$transaction(async (transaction) => {
       const comment = await transaction.comment.create({
         data: {
@@ -163,7 +168,7 @@ export class PrismaCardRepository implements CardRepository {
   }
 }
 
-function mapCardDetails(card: CardRecordWithDetails): CardDetails {
+function mapCardDetails(card: CardRecordWithDetails): CardDetailsRecord {
   return {
     assigneeId: card.assigneeId,
     comments: card.comments,

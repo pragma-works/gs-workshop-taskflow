@@ -1,14 +1,11 @@
-import type { Card, Comment, Label, List } from '@prisma/client'
+import type {
+  CardDetailsRecord,
+  CardRecord,
+  CardWithBoardRecord,
+  CommentRecord,
+  ListRecord,
+} from '../domain/models'
 import { BadRequestError, ForbiddenError, NotFoundError } from '../errors/application-error'
-
-export interface CardWithBoard extends Card {
-  readonly list: Pick<List, 'boardId' | 'id'>
-}
-
-export interface CardDetails extends Card {
-  readonly comments: readonly Comment[]
-  readonly labels: readonly Label[]
-}
 
 export interface CreateCardInput {
   readonly assigneeId?: number
@@ -37,12 +34,17 @@ export interface MoveCardActivity {
 }
 
 export interface CardRepository {
-  createCard(input: CreateCardRecord): Promise<Card>
-  createComment(cardId: number, userId: number, boardId: number, content: string): Promise<Comment>
+  createCard(input: CreateCardRecord): Promise<CardRecord>
+  createComment(
+    cardId: number,
+    userId: number,
+    boardId: number,
+    content: string,
+  ): Promise<CommentRecord>
   deleteCard(cardId: number): Promise<void>
-  findCardById(cardId: number): Promise<CardWithBoard | null>
-  findCardDetailsById(cardId: number): Promise<CardDetails | null>
-  findListById(listId: number): Promise<List | null>
+  findCardById(cardId: number): Promise<CardWithBoardRecord | null>
+  findCardDetailsById(cardId: number): Promise<CardDetailsRecord | null>
+  findListById(listId: number): Promise<ListRecord | null>
   findMemberRole(userId: number, boardId: number): Promise<'member' | 'owner' | null>
   findNextPosition(listId: number): Promise<number>
   moveCard(
@@ -59,7 +61,7 @@ export class CardsService {
   public constructor(private readonly cardRepository: CardRepository) {}
 
   /** Returns a card with comments and labels for a board member. */
-  public async getCard(userId: number, cardId: number): Promise<CardDetails> {
+  public async getCard(userId: number, cardId: number): Promise<CardDetailsRecord> {
     const cardRecord = await this.getCardRecord(cardId)
     await this.assertBoardMember(userId, cardRecord.list.boardId)
 
@@ -72,7 +74,7 @@ export class CardsService {
   }
 
   /** Creates a card in a list the current user can access. */
-  public async createCard(userId: number, input: CreateCardInput): Promise<Card> {
+  public async createCard(userId: number, input: CreateCardInput): Promise<CardRecord> {
     const list = await this.cardRepository.findListById(input.listId)
     if (list === null) {
       throw new NotFoundError('List not found', { listId: input.listId })
@@ -113,7 +115,11 @@ export class CardsService {
   }
 
   /** Creates a comment on a card the current user can access. */
-  public async addComment(userId: number, cardId: number, input: AddCommentInput): Promise<Comment> {
+  public async addComment(
+    userId: number,
+    cardId: number,
+    input: AddCommentInput,
+  ): Promise<CommentRecord> {
     const card = await this.getCardRecord(cardId)
     await this.assertBoardMember(userId, card.list.boardId)
 
@@ -128,7 +134,7 @@ export class CardsService {
     await this.cardRepository.deleteCard(cardId)
   }
 
-  private async getCardRecord(cardId: number): Promise<CardWithBoard> {
+  private async getCardRecord(cardId: number): Promise<CardWithBoardRecord> {
     const card = await this.cardRepository.findCardById(cardId)
     if (card === null) {
       throw new NotFoundError('Not found', { cardId })

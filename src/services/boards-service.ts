@@ -1,27 +1,14 @@
-import type { Board, Card, Comment, Label, List } from '@prisma/client'
+import type { BoardDetailsRecord, BoardRecord } from '../domain/models'
 import { ConflictError, ForbiddenError, NotFoundError } from '../errors/application-error'
 
 export type BoardRole = 'member' | 'owner'
 
-export interface BoardCardDetails extends Card {
-  readonly comments: readonly Comment[]
-  readonly labels: readonly Label[]
-}
-
-export interface BoardListDetails extends List {
-  readonly cards: readonly BoardCardDetails[]
-}
-
-export interface BoardDetails extends Board {
-  readonly lists: readonly BoardListDetails[]
-}
-
 export interface BoardRepository {
   addMember(boardId: number, memberId: number, role: BoardRole): Promise<void>
-  createBoard(name: string, ownerId: number): Promise<Board>
-  findBoardById(boardId: number): Promise<Board | null>
-  findBoardDetails(boardId: number): Promise<BoardDetails | null>
-  findBoardsForUser(userId: number): Promise<readonly Board[]>
+  createBoard(name: string, ownerId: number): Promise<BoardRecord>
+  findBoardById(boardId: number): Promise<BoardRecord | null>
+  findBoardDetails(boardId: number): Promise<BoardDetailsRecord | null>
+  findBoardsForUser(userId: number): Promise<readonly BoardRecord[]>
   findMemberRole(userId: number, boardId: number): Promise<BoardRole | null>
 }
 
@@ -46,12 +33,12 @@ export class BoardsService {
   ) {}
 
   /** Lists boards the current user belongs to. */
-  public async listBoardsForUser(userId: number): Promise<readonly Board[]> {
+  public async listBoardsForUser(userId: number): Promise<readonly BoardRecord[]> {
     return this.boardRepository.findBoardsForUser(userId)
   }
 
   /** Returns a board with lists, cards, comments, and labels for a member. */
-  public async getBoardById(userId: number, boardId: number): Promise<BoardDetails> {
+  public async getBoardById(userId: number, boardId: number): Promise<BoardDetailsRecord> {
     await this.assertBoardMember(userId, boardId)
 
     const board = await this.boardRepository.findBoardDetails(boardId)
@@ -63,7 +50,7 @@ export class BoardsService {
   }
 
   /** Creates a board and its owner membership. */
-  public async createBoard(userId: number, input: CreateBoardInput): Promise<Board> {
+  public async createBoard(userId: number, input: CreateBoardInput): Promise<BoardRecord> {
     return this.boardRepository.createBoard(input.name, userId)
   }
 

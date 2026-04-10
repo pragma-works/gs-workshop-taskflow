@@ -1,5 +1,6 @@
-import type { Board, Prisma, PrismaClient } from '@prisma/client'
-import type { BoardDetails, BoardRepository, BoardRole } from '../services/boards-service'
+import type { Prisma, PrismaClient } from '@prisma/client'
+import type { BoardDetailsRecord, BoardRecord } from '../domain/models'
+import type { BoardRepository, BoardRole } from '../services/boards-service'
 
 type BoardRecordWithDetails = Prisma.BoardGetPayload<{
   include: {
@@ -26,7 +27,7 @@ export class PrismaBoardRepository implements BoardRepository {
   public constructor(private readonly prismaClient: PrismaClient) {}
 
   /** Creates a board together with its owner membership. */
-  public createBoard(name: string, ownerId: number): Promise<Board> {
+  public async createBoard(name: string, ownerId: number): Promise<BoardRecord> {
     return this.prismaClient.board.create({
       data: {
         members: {
@@ -41,12 +42,12 @@ export class PrismaBoardRepository implements BoardRepository {
   }
 
   /** Finds a board by id. */
-  public findBoardById(boardId: number): Promise<Board | null> {
+  public async findBoardById(boardId: number): Promise<BoardRecord | null> {
     return this.prismaClient.board.findUnique({ where: { id: boardId } })
   }
 
   /** Lists every board a user belongs to. */
-  public findBoardsForUser(userId: number): Promise<readonly Board[]> {
+  public async findBoardsForUser(userId: number): Promise<readonly BoardRecord[]> {
     return this.prismaClient.board.findMany({
       orderBy: { createdAt: 'desc' },
       where: {
@@ -82,7 +83,7 @@ export class PrismaBoardRepository implements BoardRepository {
   }
 
   /** Returns a board with lists, cards, comments, and labels without N+1 queries. */
-  public async findBoardDetails(boardId: number): Promise<BoardDetails | null> {
+  public async findBoardDetails(boardId: number): Promise<BoardDetailsRecord | null> {
     const board = await this.prismaClient.board.findUnique({
       include: {
         lists: {
@@ -118,7 +119,7 @@ function parseBoardRole(role: string): BoardRole {
   throw new Error(`Unsupported board role: ${role}`)
 }
 
-function mapBoardDetails(board: BoardRecordWithDetails): BoardDetails {
+function mapBoardDetails(board: BoardRecordWithDetails): BoardDetailsRecord {
   return {
     createdAt: board.createdAt,
     id: board.id,

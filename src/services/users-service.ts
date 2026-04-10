@@ -1,5 +1,5 @@
-import type { User } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
+import type { UserRecord } from '../domain/models'
 import type { TokenService } from '../auth/token-service'
 import { ConflictError, NotFoundError, UnauthorizedError } from '../errors/application-error'
 
@@ -22,9 +22,9 @@ export interface PublicUser {
 }
 
 export interface UserRepository {
-  createUser(input: RegisterUserRecord): Promise<User>
-  findByEmail(email: string): Promise<User | null>
-  findById(userId: number): Promise<User | null>
+  createUser(input: RegisterUserRecord): Promise<UserRecord>
+  findByEmail(email: string): Promise<UserRecord | null>
+  findById(userId: number): Promise<UserRecord | null>
 }
 
 export interface RegisterUserRecord {
@@ -84,7 +84,7 @@ export class UsersService {
   }
 }
 
-function toPublicUser(user: User): PublicUser {
+function toPublicUser(user: UserRecord): PublicUser {
   return {
     createdAt: user.createdAt,
     email: user.email,
