@@ -1,35 +1,30 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "4f2612b",
+    "commit": "88db97d",
     "branch": "participant/P032",
-    "timestamp": "2026-04-10T21:04:47.707Z",
+    "timestamp": "2026-04-10T21:20:30.457Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
     "self_describing": {
-      "score": 0,
+      "score": 1,
       "max": 1,
-      "details": "README not modified from template — update it to describe what you built"
+      "details": "README updated by participant (3422 chars)"
     },
     "bounded": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "31 direct DB calls found — repository layer missing",
-      "violations": [
-        "src/routes/activity.ts",
-        "src/routes/boards.ts",
-        "src/routes/cards.ts",
-        "src/routes/users.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
-      "testsPassed": 0,
+      "details": "Tests: 22 passed, 0 failed | Coverage: 92.8%",
+      "testsPassed": 22,
       "testsFailed": 0,
-      "coveragePct": null
+      "coveragePct": 92.78
     },
     "defended": {
       "score": 1,
@@ -37,11 +32,11 @@
       "details": "Structural guard present: CI workflow"
     },
     "auditable": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "Conventional commits: 26/26 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "details": "Conventional commits: 28/28 (100%) | Decision log: present",
       "conventionalPct": 1,
-      "hasDecisionLog": false
+      "hasDecisionLog": true
     },
     "composable": {
       "score": null,
@@ -54,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 2,
+      "score": 8,
       "max": 8
     },
     "total_with_live_tests": {
@@ -76,10 +71,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 3.74,
-    "branchCount": 26,
-    "testCoverage": null,
-    "testCount": 0,
+    "duplicatePct": 2.14,
+    "branchCount": 20,
+    "testCoverage": 92.78,
+    "testCount": 22,
     "depCount": 4
   }
 }
