@@ -49,8 +49,8 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
+  const { password: _password, ...publicUser } = user
+  res.json(publicUser)
 })
 
 export default router
