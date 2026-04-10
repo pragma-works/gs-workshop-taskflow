@@ -22,6 +22,19 @@ npm test          # run tests
 
 ---
 
+## Group B Activity Feed
+
+This branch now includes an **Activity Feed** for board-level actions.
+
+- `GET /boards/:id/activity` returns board events in reverse chronological order for authenticated board members
+- `GET /boards/:id/activity/preview` returns the latest 10 events without authentication for smoke testing
+- `POST /cards/:id/move` records a `card_moved` event atomically with the card move
+- `POST /cards/:id/comments` records a `comment_added` event when a new comment is created
+
+The implementation also removes direct Prisma access from route handlers, centralizes JWT handling, and adds tests for the corrected baseline plus the new activity endpoints.
+
+---
+
 ## How scoring works
 
 Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
