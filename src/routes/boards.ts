@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { verifyToken } from '../middleware/auth'
-import { getBoardsForUser, getBoardWithDetails, createBoard, isMember, isOwner, addMember } from '../services/boardService'
+import { getBoardsForUser, getBoardWithDetails, createBoard, isMember, isOwner, addMember } from '../repositories/boardService'
 
 const router = Router()
 

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { verifyToken } from '../middleware/auth'
-import { getCardWithDetails, createCard, deleteCard, addComment, getList, moveCardAtomic } from '../services/cardService'
+import { getCardWithDetails, createCard, deleteCard, addComment, getList, moveCardAtomic } from '../repositories/cardService'
 
 const router = Router()
 

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { verifyToken } from '../middleware/auth'
-import { isMember } from '../services/boardService'
-import { getActivityForBoard } from '../services/activityService'
+import { isMember } from '../repositories/boardService'
+import { getActivityForBoard } from '../repositories/activityService'
 
 const router = Router({ mergeParams: true })
 
