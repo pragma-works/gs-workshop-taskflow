@@ -1,5 +1,65 @@
-import { Router, Request, Response } from 'express'
-import { verifyToken } from '../lib/auth'
+import { Router, Request, Response, NextFunction } from 'express'
+import { authenticate } from '../middleware/authenticate'
+import { validate } from '../middleware/validate'
+import { createCardSchema, moveCardSchema, addCommentSchema } from '../schemas/cards.schema'
+import type { CardService } from '../services/cards.service'
+
+export function createCardsRouter(service: CardService) {
+  const router = Router()
+
+  router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const card = await service.getCard(parseInt(req.params.id), req.userId!)
+      res.json(card)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/', authenticate, validate(createCardSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const card = await service.createCard(req.body, req.userId!)
+      res.status(201).json(card)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.patch('/:id/move', authenticate, validate(moveCardSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await service.moveCard(parseInt(req.params.id), req.body, req.userId!)
+      res.json({ ok: true, event: result.event })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/:id/comments', authenticate, validate(addCommentSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const comment = await service.addComment({
+        content: req.body.content,
+        cardId: parseInt(req.params.id),
+        userId: req.userId!,
+      })
+      res.status(201).json(comment)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.delete('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await service.deleteCard(parseInt(req.params.id), req.userId!)
+      res.json({ ok: true })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  return router
+}
+
+// Backward-compatible default export wired with concrete repos
 import {
   findCardWithDetails,
   createCard,
@@ -7,93 +67,29 @@ import {
   addComment,
   deleteCard,
 } from '../repositories/cards.repo'
+import {
+  findBoardsByUser,
+  findBoardWithLists,
+  isBoardMember,
+  createBoard,
+  addBoardMember,
+} from '../repositories/boards.repo'
+import { createCardService } from '../services/cards.service'
+import { createBoardService } from '../services/boards.service'
 
-const router = Router()
+const defaultCardRepo = {
+  findWithDetails: findCardWithDetails,
+  create: createCard,
+  moveWithActivity: moveCardWithActivity,
+  addComment,
+  delete: deleteCard,
+}
+const defaultBoardRepo = {
+  findByUserId: findBoardsByUser,
+  findWithLists: findBoardWithLists,
+  isMember: isBoardMember,
+  create: createBoard,
+  addMember: addBoardMember,
+}
 
-// GET /cards/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const card = await findCardWithDetails(parseInt(req.params.id))
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
-  res.json(card)
-})
-
-// POST /cards — create card
-router.post('/', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const { title, description, listId, assigneeId } = req.body
-  const card = await createCard({ title, description, listId, assigneeId })
-  res.status(201).json(card)
-})
-
-// PATCH /cards/:id/move — move card to different list (atomic with activity log)
-router.patch('/:id/move', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const cardId = parseInt(req.params.id)
-  const { targetListId, position } = req.body
-
-  try {
-    const result = await moveCardWithActivity(cardId, targetListId, position, userId)
-    if (!result) {
-      res.status(404).json({ error: 'Not found' })
-      return
-    }
-    res.json({ ok: true, event: result.event })
-  } catch (err: any) {
-    res.status(500).json({ error: 'Move failed', details: err.message })
-  }
-})
-
-// POST /cards/:id/comments — add comment
-router.post('/:id/comments', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const { content } = req.body
-  const cardId = parseInt(req.params.id)
-  const comment = await addComment({ content, cardId, userId })
-  res.status(201).json(comment)
-})
-
-// DELETE /cards/:id
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const cardId = parseInt(req.params.id)
-  await deleteCard(cardId)
-  res.json({ ok: true })
-})
-
-export default router
+export default createCardsRouter(createCardService(defaultCardRepo as any, defaultBoardRepo as any))

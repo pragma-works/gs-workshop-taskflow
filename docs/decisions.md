@@ -47,6 +47,28 @@ The JWT secret `'super-secret-key-change-me'` was hardcoded identically in three
 ### Decision
 Extract to `src/lib/auth.ts` which reads `process.env.JWT_SECRET` (with the original string as a dev fallback). All route files import `verifyToken` and `JWT_SECRET` from this single module.
 
+## ADR-004: SOLID Refactor — Service Layer with Functional DI
+
+**Date:** 2026-04-11
+**Status:** Accepted
+
+### Context
+Route handlers were doing too much: JWT verification, business rule enforcement, database access, and HTTP serialization — all inline. This violated SRP, made unit testing impossible without full database setup, and made the codebase brittle to change.
+
+### Decision
+Introduce a service layer using factory functions with injected interface-typed dependencies:
+- `createUserService(repo, hasher, tokens)` → `UserService`
+- `createBoardService(repo)` → `BoardService`
+- `createCardService(cardRepo, boardRepo)` → `CardService`
+- `createActivityService(activityRepo, boardRepo)` → `ActivityService`
+
+Repository interfaces (`IBoardRepository`, `ICardRepository`, etc.) define the contracts. Concrete implementations live in `src/repositories/`. Services only depend on interfaces — never on Prisma.
+
+Authentication is extracted to `src/middleware/authenticate.ts` (replaces 16 inline try/catch blocks). Input validation uses `src/middleware/validate.ts` (Zod-powered factory). Typed errors (`AppError` hierarchy) flow to the global error handler which maps `statusCode` to HTTP status.
+
 ### Consequences
-- Secret rotation requires only an env var change
-- Single `verifyToken` implementation — no drift between copies
+- Services are fully unit-testable with mocked interfaces (no database required)
+- 27 new service-layer tests; total coverage 88.76%
+- Routes are thin adapters: parse → service → respond (10–20 lines each)
+- No Prisma imports outside `src/repositories/` — Bounded criterion maintained
+- Open/Closed: new endpoints add new services/middleware without editing existing handlers

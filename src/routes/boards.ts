@@ -1,5 +1,52 @@
-import { Router, Request, Response } from 'express'
-import { verifyToken } from '../lib/auth'
+import { Router, Request, Response, NextFunction } from 'express'
+import { authenticate } from '../middleware/authenticate'
+import { validate } from '../middleware/validate'
+import { createBoardSchema, addMemberSchema } from '../schemas/boards.schema'
+import type { BoardService } from '../services/boards.service'
+
+export function createBoardsRouter(service: BoardService) {
+  const router = Router()
+
+  router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const boards = await service.getUserBoards(req.userId!)
+      res.json(boards)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.get('/:id', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const board = await service.getBoard(parseInt(req.params.id), req.userId!)
+      res.json(board)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/', authenticate, validate(createBoardSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const board = await service.createBoard(req.body.name, req.userId!)
+      res.status(201).json(board)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  router.post('/:id/members', authenticate, validate(addMemberSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await service.addMember(parseInt(req.params.id), req.body.memberId, req.userId!)
+      res.status(201).json({ ok: true })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  return router
+}
+
+// Backward-compatible default export wired with concrete repos
 import {
   findBoardsByUser,
   findBoardWithLists,
@@ -7,77 +54,14 @@ import {
   createBoard,
   addBoardMember,
 } from '../repositories/boards.repo'
+import { createBoardService } from '../services/boards.service'
 
-const router = Router()
+const defaultRepo = {
+  findByUserId: findBoardsByUser,
+  findWithLists: findBoardWithLists,
+  isMember: isBoardMember,
+  create: createBoard,
+  addMember: addBoardMember,
+}
 
-// GET /boards — list boards for current user
-router.get('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const boards = await findBoardsByUser(userId)
-  res.json(boards)
-})
-
-// GET /boards/:id — full board with lists, cards, comments
-router.get('/:id', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const boardId = parseInt(req.params.id)
-  const isMember = await isBoardMember(userId, boardId)
-  if (!isMember) {
-    res.status(403).json({ error: 'Not a board member' })
-    return
-  }
-
-  const board = await findBoardWithLists(boardId)
-  if (!board) {
-    res.status(404).json({ error: 'Board not found' })
-    return
-  }
-
-  res.json(board)
-})
-
-// POST /boards — create board
-router.post('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const { name } = req.body
-  const board = await createBoard(name, userId)
-  res.status(201).json(board)
-})
-
-// POST /boards/:id/members — add member
-router.post('/:id/members', async (req: Request, res: Response) => {
-  try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
-  const boardId = parseInt(req.params.id)
-  const { memberId } = req.body
-  await addBoardMember(boardId, memberId)
-  res.status(201).json({ ok: true })
-})
-
-export default router
+export default createBoardsRouter(createBoardService(defaultRepo as any))

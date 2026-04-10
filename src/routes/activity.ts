@@ -1,46 +1,62 @@
-import { Router, Request, Response } from 'express'
-import { verifyToken } from '../lib/auth'
-import { isBoardMember } from '../repositories/boards.repo'
-import { getActivityByBoard } from '../repositories/activity.repo'
+import { Router, Request, Response, NextFunction } from 'express'
+import { authenticate } from '../middleware/authenticate'
+import type { ActivityService } from '../services/activity.service'
 
-const router = Router()
-
-function formatEvents(events: Awaited<ReturnType<typeof getActivityByBoard>>) {
-  return events.map(e => ({
+function formatEvent(e: any) {
+  return {
     ...e,
-    actorName: e.actor.name,
+    actorName: e.actor?.name ?? null,
     cardTitle: e.card?.title ?? null,
     fromListName: e.fromList?.name ?? null,
     toListName: e.toList?.name ?? null,
-  }))
+  }
 }
 
-// GET /boards/:id/activity — authenticated
-router.get('/:id/activity', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+export function createActivityRouter(service: ActivityService) {
+  const router = Router()
 
-  const boardId = parseInt(req.params.id)
-  const isMember = await isBoardMember(userId, boardId)
-  if (!isMember) {
-    res.status(403).json({ error: 'Not a board member' })
-    return
-  }
+  router.get('/:id/activity', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const page = parseInt(req.query.page as string ?? '1') || 1
+      const limit = parseInt(req.query.limit as string ?? '20') || 20
+      const events = await service.getBoardActivity(parseInt(req.params.id), req.userId!, { page, limit })
+      res.json(events.map(formatEvent))
+    } catch (err) {
+      next(err)
+    }
+  })
 
-  const events = await getActivityByBoard(boardId)
-  res.json(formatEvents(events))
-})
+  router.get('/:id/activity/preview', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const events = await service.getPreview(parseInt(req.params.id))
+      res.json(events.map(formatEvent))
+    } catch (err) {
+      next(err)
+    }
+  })
 
-// GET /boards/:id/activity/preview — no auth required; for testing
-router.get('/:id/activity/preview', async (req: Request, res: Response) => {
-  const boardId = parseInt(req.params.id)
-  const events = await getActivityByBoard(boardId)
-  res.json(formatEvents(events))
-})
+  return router
+}
 
-export default router
+// Backward-compatible default export wired with concrete repos
+import { getActivityByBoard } from '../repositories/activity.repo'
+import {
+  findBoardsByUser,
+  findBoardWithLists,
+  isBoardMember,
+  createBoard,
+  addBoardMember,
+} from '../repositories/boards.repo'
+import { createActivityService } from '../services/activity.service'
+import { createBoardService } from '../services/boards.service'
+
+const defaultActivityRepo = { getByBoard: getActivityByBoard }
+const defaultBoardRepo = {
+  findByUserId: findBoardsByUser,
+  findWithLists: findBoardWithLists,
+  isMember: isBoardMember,
+  create: createBoard,
+  addMember: addBoardMember,
+}
+
+export default createActivityRouter(createActivityService(defaultActivityRepo as any, defaultBoardRepo as any))
