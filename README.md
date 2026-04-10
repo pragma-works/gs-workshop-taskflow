@@ -1,13 +1,54 @@
-# taskflow — Workshop Project
+# TaskFlow — Kanban Board API
 
-A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
-move cards between them, and discuss work in comments.
+A fully-featured Kanban board REST API built with **Express**, **Prisma**, and **SQLite**, implementing **clean architecture** with a repository + service layer and a React/Tailwind frontend.
 
 ---
 
-## Your instructions are in START.md
+## What was built
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+### Activity Feed (PM-5214)
+The core workshop deliverable: every card move is persisted as an `ActivityEvent` in the same database transaction as the card update (no partial-write risk). The feed endpoint returns events in reverse-chronological order, with related data (actor name, card title, list names) loaded in a single Prisma `include` — no N+1 queries.
+
+### Architecture
+The backend follows a strict layered architecture:
+
+```
+src/
+  repositories/   ← all Prisma calls live here (interfaces + implementations)
+  services/       ← business logic; depends on repository interfaces
+  middleware/     ← shared auth (JWT verification)
+  routes/         ← thin HTTP controllers; depend on services via constructor injection
+```
+
+Dependencies flow inward: routes → services → repositories → Prisma. Nothing leaks across boundaries.
+
+### Frontend (React + Tailwind CSS)
+A Kanban board UI (`client/`) built with Vite + React + Tailwind CSS v4:
+- **Login page** — JWT-based auth
+- **Boards page** — list and create boards
+- **Board view** — kanban columns with card move buttons
+- **Activity feed sidebar** — live event log per board
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/users/register` | Register a new user |
+| POST | `/users/login` | Authenticate and receive a JWT |
+| GET | `/users/:id` | Get user profile |
+| GET | `/boards` | List boards for authenticated user |
+| GET | `/boards/:id` | Full board with lists, cards, comments, labels |
+| POST | `/boards` | Create a board (requester becomes owner) |
+| POST | `/boards/:id/members` | Add a member to a board |
+| GET | `/boards/:id/activity` | Activity feed (authenticated board members) |
+| GET | `/boards/:id/activity/preview` | Activity feed (no auth, for testing) |
+| GET | `/cards/:id` | Get a card with comments and labels |
+| POST | `/cards` | Create a card in a list |
+| PATCH | `/cards/:id/move` | Move card atomically (updates card + creates ActivityEvent in one transaction) |
+| POST | `/cards/:id/comments` | Add a comment to a card |
+| DELETE | `/cards/:id` | Delete a card |
 
 ---
 
@@ -15,54 +56,33 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 
 ```bash
 npm install
-npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
-npm test          # run tests
+cp .env.example .env
+npm run db:push      # sync Prisma schema → SQLite
+npm run db:seed      # seed with Alice, Bob, Carol + sample board
+npm run dev          # API on http://localhost:3001
+npm run dev:all      # API + React UI (http://localhost:5173)
+npm test             # run Vitest test suite
 ```
 
 ---
 
-## How scoring works
+## Tech Stack
 
-Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
-
-1. Checks out your code
-2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
-3. Writes the result to `score.json` on your branch (committed by the bot)
-4. Uploads it as a workflow artifact
-
-**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
-
-The score is re-computed on every push, so the latest push always reflects your current state.
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js + TypeScript |
+| HTTP | Express 4 |
+| ORM | Prisma 5 (SQLite) |
+| Auth | JWT (`jsonwebtoken`) + bcrypt |
+| Tests | Vitest + Supertest |
+| Frontend | React 18 + Vite + Tailwind CSS v4 |
 
 ---
 
-## What gets scored (automated, 8 pts)
+## Environment variables
 
-| Property | Pts | What earns it |
-|----------|-----|---------------|
-| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
-| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
-| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
-| **Bounded** | 2 | Zero direct `db.*` calls in route files |
-| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
-| **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors |
-
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
-
----
-
-## Scoring is blind
-
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
-
----
-
-## What good looks like
-
-- Cards belong to columns; columns belong to boards — correct ownership enforced
-- Moving a card to Done does not delete it
-- Comments are attached to cards, not boards
-- JWT secret comes from an env var, never hardcoded
-- Every endpoint has at least one test
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `file:./dev.db` | Prisma database path |
+| `JWT_SECRET` | *(set in .env)* | JWT signing secret — **never hardcode** |
+| `PORT` | `3001` | API server port |

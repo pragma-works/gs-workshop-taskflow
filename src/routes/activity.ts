@@ -1,10 +1,26 @@
-import { Router } from 'express'
+import { Router, Response } from 'express'
+import { ActivityService } from '../services/ActivityService'
+import { requireAuth, AuthRequest } from '../middleware/auth'
 
-const router = Router()
+export function createActivityRouter(activityService: ActivityService) {
+  const router = Router()
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+  router.get('/:id/activity', requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      const events = await activityService.getFeedAuthenticated(
+        req.userId!,
+        parseInt(req.params.id),
+      )
+      res.json(events)
+    } catch (err: any) {
+      res.status(err.status ?? 500).json({ error: err.message })
+    }
+  })
 
-export default router
+  router.get('/:id/activity/preview', async (req, res) => {
+    const events = await activityService.getFeedPreview(parseInt(req.params.id))
+    res.json(events)
+  })
+
+  return router
+}
