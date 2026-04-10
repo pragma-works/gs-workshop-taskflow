@@ -1,45 +1,34 @@
 import { Router, Request, Response } from 'express'
-import * as bcrypt from 'bcryptjs'
-import prisma from '../db'
-import { verifyToken, signToken } from '../middleware/auth'
+import * as userService from '../services/user.service'
 
 const router = Router()
 
 // POST /users/register
 router.post('/register', async (req: Request, res: Response) => {
   const { email, password, name } = req.body
-  const hashed = await bcrypt.hash(password, 10)
-  const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
+  const user = await userService.register({ email, password, name })
   res.json(user)
 })
 
 // POST /users/login
 router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
+  try {
+    const { email, password } = req.body
+    const result = await userService.login(email, password)
+    res.json(result)
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message })
   }
-  const valid = await bcrypt.compare(password, user.password)
-  if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
-  }
-  const token = signToken(user.id)
-  res.json({ token })
 })
 
 // GET /users/:id
 router.get('/:id', async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!user) {
-    res.status(404).json({ error: 'Not found' })
-    return
+  try {
+    const user = await userService.getUser(parseInt(req.params.id))
+    res.json(user)
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message })
   }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
 })
 
 export default router
