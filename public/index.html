@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Taskflow Workspace</title>
+    <link rel="stylesheet" href="/app.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Taskflow</p>
+        <h1>Workspace</h1>
+        <p class="subtitle">
+          Minimal UI for authentication, boards, cards, and the board activity feed.
+        </p>
+      </div>
+      <div class="session-panel">
+        <span id="session-label" class="session-label">Signed out</span>
+        <button id="logout-button" class="secondary-button" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Register</h2>
+          <form id="register-form" class="stack">
+            <label>
+              Name
+              <input id="register-name" name="name" type="text" required />
+            </label>
+            <label>
+              Email
+              <input id="register-email" name="email" type="email" required />
+            </label>
+            <label>
+              Password
+              <input id="register-password" name="password" type="password" required />
+            </label>
+            <button type="submit">Create account</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Login</h2>
+          <form id="login-form" class="stack">
+            <label>
+              Email
+              <input id="login-email" name="email" type="email" required />
+            </label>
+            <label>
+              Password
+              <input id="login-password" name="password" type="password" required />
+            </label>
+            <button type="submit">Sign in</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <h2>Boards</h2>
+            <button id="refresh-boards-button" class="secondary-button" type="button">
+              Refresh
+            </button>
+          </div>
+          <form id="create-board-form" class="stack compact">
+            <label>
+              New board
+              <input id="board-name" name="name" type="text" placeholder="Platform Roadmap" required />
+            </label>
+            <button type="submit">Create board</button>
+          </form>
+          <ul id="boards-list" class="board-list" aria-live="polite">
+            <li class="placeholder">Sign in to load your boards.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <section class="panel board-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Selected board</p>
+              <h2 id="board-title">No board selected</h2>
+            </div>
+            <button id="refresh-board-button" class="secondary-button" type="button">
+              Refresh board
+            </button>
+          </div>
+          <p id="board-summary" class="subtitle">
+            After signing in, choose a board to inspect lists, cards, and activity.
+          </p>
+          <div id="lists-grid" class="lists-grid" aria-live="polite"></div>
+        </section>
+
+        <section class="panel activity-panel">
+          <div class="section-heading activity-heading">
+            <div>
+              <p class="eyebrow">Board activity</p>
+              <h2>Feed</h2>
+            </div>
+            <div class="inline-controls">
+              <label class="inline-label" for="activity-mode">
+                Mode
+                <select id="activity-mode" name="activity-mode">
+                  <option value="full">Member feed</option>
+                  <option value="preview">Public preview</option>
+                </select>
+              </label>
+              <button id="refresh-activity-button" class="secondary-button" type="button">
+                Refresh feed
+              </button>
+            </div>
+          </div>
+          <ol id="activity-list" class="activity-list" aria-live="polite">
+            <li class="placeholder">Pick a board to load the latest events.</li>
+          </ol>
+        </section>
+
+        <section class="panel">
+          <h2>Status</h2>
+          <p id="status-message" class="status-message" aria-live="polite">
+            Ready. Register or sign in to start.
+          </p>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,4 +1,5 @@
 import express from 'express'
+import { resolve } from 'node:path'
 import type { TokenService } from './auth/token-service'
 import { authenticateRequest } from './middleware/authenticate-request'
 import { createActivityRouter } from './routes/activity'
@@ -23,7 +24,9 @@ export interface ApplicationServices {
 export function createApp(services: ApplicationServices) {
   const app = express()
   const authenticatedRoute = authenticateRequest(services.tokenService)
+  const publicDirectory = resolve(__dirname, '..', 'public')
   app.use(express.json())
+  app.use(express.static(publicDirectory))
 
   app.use('/users', createUsersRouter(services.usersService))
   app.use('/boards', createActivityRouter(services.activityService, authenticatedRoute))

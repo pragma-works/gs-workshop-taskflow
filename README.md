@@ -16,7 +16,9 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 ```bash
 npm install
 npm run db:push   # creates the SQLite database
+npm run db:seed   # optional, loads a demo workspace for the UI
 npm run dev       # starts on http://localhost:3000
+npm run sentinel  # architecture guard for routes/services/repositories
 npm test          # run tests
 ```
 
@@ -32,6 +34,48 @@ This branch now includes an **Activity Feed** for board-level actions.
 - `POST /cards/:id/comments` records a `comment_added` event when a new comment is created
 
 The implementation also removes direct Prisma access from route handlers, centralizes JWT handling, and adds tests for the corrected baseline plus the new activity endpoints.
+
+---
+
+## Minimal Web UI
+
+The backend now serves a lightweight UI from `/` so the current API can be exercised without Postman.
+
+- Register or log in from the left sidebar
+- Create boards and load the board detail view
+- Create cards directly inside each list
+- Move cards between lists and add comments inline
+- Switch the activity panel between the authenticated member feed and the public preview feed
+
+The UI is intentionally plain vanilla HTML/CSS/JS so the repo keeps a single build pipeline and no extra frontend framework dependency.
+
+---
+
+## Architecture Sentinel
+
+This repo now includes a **sentinel** (`npm run sentinel`) and runs it in CI before scoring.
+
+It protects the main boundaries that matter in this workshop:
+
+- routes must not import repositories, `db`, or Prisma
+- services must stay framework-agnostic and must not import Express, routes, repositories, or Prisma
+- repositories must not depend on Express or route handlers
+
+This is a lightweight structural guard that complements the test suite and helps keep the refactor from drifting backward.
+
+---
+
+## Good practices to add next
+
+Some worthwhile next steps beyond the current SOLID refactor would be:
+
+1. **DDD-lite**: introduce explicit aggregates/value objects for board activity, card movement, and membership rules instead of relying mostly on record-shaped data.
+2. **Application/use-case layer**: separate orchestration use cases from domain policies so the services stay even smaller.
+3. **Schema-first validation**: add request/response schemas to make contracts explicit and reusable.
+4. **ADR discipline**: record each significant architecture decision in a consistent ADR folder.
+5. **Observability**: structured logs, request correlation IDs, and error telemetry for debugging production incidents.
+6. **Contract and browser tests**: keep the current Vitest API tests and add consumer-facing coverage for the UI flows over time.
+7. **Accessibility review**: keyboard flow, focus management, empty states, and contrast checks for the web UI.
 
 ---
 

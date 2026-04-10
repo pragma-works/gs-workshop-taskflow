@@ -23,6 +23,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Run architecture sentinel
+        run: npm run sentinel
+
       - name: Run GS scoring
         run: npm run score
 
