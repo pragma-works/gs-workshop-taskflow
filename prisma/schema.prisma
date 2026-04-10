@@ -10,22 +10,24 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
+  id           Int             @id @default(autoincrement())
+  email        String          @unique
   password     String
   name         String
-  createdAt    DateTime      @default(now())
+  createdAt    DateTime        @default(now())
   boards       BoardMember[]
-  cards        Card[]        @relation("assignee")
+  cards        Card[]          @relation("assignee")
   comments     Comment[]
+  activity     ActivityEvent[]
 }
 
 model Board {
-  id        Int           @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   name      String
-  createdAt DateTime      @default(now())
+  createdAt DateTime        @default(now())
   members   BoardMember[]
   lists     List[]
+  activity  ActivityEvent[]
 }
 
 model BoardMember {
@@ -85,5 +87,17 @@ model Comment {
   cardId    Int
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int?
+  userId    Int
+  action    String
+  meta      String?
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
 }
