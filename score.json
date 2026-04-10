@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "ca66279",
+    "commit": "fe5d241",
     "branch": "participant/P025",
-    "timestamp": "2026-04-10T21:33:02.824Z",
+    "timestamp": "2026-04-10T21:36:36.634Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -13,12 +13,10 @@
       "details": "README updated by participant (1751 chars)"
     },
     "bounded": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "1 direct DB call(s) outside repository layer",
-      "violations": [
-        "src/__tests__/globalSetup.ts"
-      ]
+      "details": "No direct DB calls in route/service files",
+      "violations": []
     },
     "verifiable": {
       "score": 2,
@@ -36,7 +34,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 43/43 (100%) | Decision log: present",
+      "details": "Conventional commits: 45/45 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -51,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 7,
+      "score": 8,
       "max": 8
     },
     "total_with_live_tests": {
