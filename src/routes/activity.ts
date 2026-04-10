@@ -1,44 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import prisma from '../db'
 import { verifyToken } from '../auth'
+import { ActivityService } from '../services/ActivityService'
+import { PrismaActivityRepository } from '../repositories/PrismaActivityRepository'
+import { PrismaBoardMemberRepository } from '../repositories/PrismaBoardMemberRepository'
 
 const router = Router({ mergeParams: true })
 
-function formatEvents(events: Awaited<ReturnType<typeof queryEvents>>) {
-  return events.map(e => ({
-    id:           e.id,
-    boardId:      e.boardId,
-    actorId:      e.actor.id,
-    actorName:    e.actor.name,
-    eventType:    e.eventType,
-    cardId:       e.card.id,
-    cardTitle:    e.cardTitle,
-    fromListName: e.fromListName,
-    toListName:   e.toListName,
-    timestamp:    e.createdAt,
-  }))
-}
+// Manual dependency injection — no container needed at this scale.
+const service = new ActivityService(
+  new PrismaActivityRepository(),
+  new PrismaBoardMemberRepository(),
+)
 
-function queryEvents(boardId: number) {
-  return prisma.activityEvent.findMany({
-    where: { boardId },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    select: {
-      id:          true,
-      boardId:     true,
-      eventType:   true,
-      cardTitle:   true,
-      fromListName: true,
-      toListName:  true,
-      createdAt:   true,
-      actor:       { select: { id: true, name: true } },
-      card:        { select: { id: true, title: true } },
-    },
-  })
-}
-
-// GET /boards/:id/activity — auth required
+// GET /boards/:id/activity — auth + membership required
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   let userId: number
   try {
@@ -50,26 +24,17 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
   try {
     const boardId = parseInt(req.params.id)
-
-    const membership = await prisma.boardMember.findUnique({
-      where: { userId_boardId: { userId, boardId } },
-    })
-    if (!membership) {
-      res.status(403).json({ error: 'Not a board member' })
-      return
-    }
-
-    res.json(formatEvents(await queryEvents(boardId)))
+    res.json(await service.getForBoard(boardId, userId))
   } catch (err) {
-    next(err)
+    next(err) // AppError subclasses are mapped by the global handler
   }
 })
 
-// GET /boards/:id/activity/preview — no auth, for testing
+// GET /boards/:id/activity/preview — no auth
 router.get('/preview', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const boardId = parseInt(req.params.id)
-    res.json(formatEvents(await queryEvents(boardId)))
+    res.json(await service.getPreview(boardId))
   } catch (err) {
     next(err)
   }
