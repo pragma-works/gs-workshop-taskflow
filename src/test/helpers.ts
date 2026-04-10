@@ -2,7 +2,7 @@ import * as jwt from 'jsonwebtoken'
 import * as bcrypt from 'bcryptjs'
 import prisma from '../db'
 
-const JWT_SECRET = 'super-secret-key-change-me'
+const JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret'
 
 export async function createUser(overrides?: { email?: string; name?: string; password?: string }) {
   const email = overrides?.email ?? 'test@example.com'
