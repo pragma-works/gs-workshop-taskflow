@@ -21,8 +21,8 @@ router.post('/register', async (req: Request, res: Response) => {
   const { email, password, name } = req.body
   const hashed = await bcrypt.hash(password, 10)
   const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
+  const { password: _password, ...publicUser } = user
+  res.json(publicUser)
 })
 
 // POST /users/login
