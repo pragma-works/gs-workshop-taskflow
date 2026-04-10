@@ -77,8 +77,8 @@ model Label {
 model CardLabel {
   cardId  Int
   labelId Int
-  card    Card  @relation(fields: [cardId], references: [id])
-  label   Label @relation(fields: [labelId], references: [id])
+  card    Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@id([cardId, labelId])
 }
@@ -102,9 +102,9 @@ model ActivityEvent {
   fromListId Int?
   toListId   Int?
   createdAt  DateTime @default(now())
-  board      Board    @relation(fields: [boardId], references: [id])
-  actor      User     @relation(fields: [actorId], references: [id])
-  card       Card?    @relation(fields: [cardId], references: [id])
-  fromList   List?    @relation("fromList", fields: [fromListId], references: [id])
-  toList     List?    @relation("toList", fields: [toListId], references: [id])
+  board      Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  card       Card?    @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  fromList   List?    @relation("fromList", fields: [fromListId], references: [id], onDelete: SetNull)
+  toList     List?    @relation("toList", fields: [toListId], references: [id], onDelete: SetNull)
 }

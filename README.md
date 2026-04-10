@@ -1,7 +1,28 @@
 # taskflow — Workshop Project
 
-A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
-move cards between them, and discuss work in comments.
+A Kanban board API with activity tracking. Teams use it to manage work in columns (Backlog, In Progress, Done), move cards between lists, discuss work in comments, and track all activity through an audit log.
+
+## Features Implemented
+
+### Core Kanban Functionality
+- **Boards & Lists**: Organize work into boards with customizable lists
+- **Cards**: Create, move, and manage tasks with descriptions, due dates, and assignments
+- **Comments**: Discuss work directly on cards
+- **Labels**: Tag cards for better organization
+- **Board Membership**: Control access with owner/member roles
+
+### Activity Feed (PM-5214) ✅
+- **Activity Tracking**: Every card move is logged with actor, timestamp, and list transition
+- **Board Activity Feed**: Authenticated endpoint returns chronological activity for board members
+- **Activity Preview**: Public endpoint for testing (no auth required)
+- **Atomic Operations**: Card moves and activity logging happen in a single transaction
+
+### Architecture
+- **Layered Design**: Routes → Services → Repositories → Database
+- **No Direct DB Access in Routes**: All data access through repository layer
+- **Centralized Auth**: JWT middleware with environment-configurable secret
+- **Authorization**: Board membership checked before sensitive operations
+- **Error Handling**: Global error handler returns JSON responses
 
 ---
 

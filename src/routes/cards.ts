@@ -1,79 +1,63 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
+import { verifyToken, AuthRequest } from '../middleware/auth'
+import cardRepo from '../repositories/CardRepository'
+import boardRepo from '../repositories/BoardRepository'
+import commentRepo from '../repositories/CommentRepository'
 import prisma from '../db'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and boards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
-
 // GET /cards/:id
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const card = await cardRepo.findById(parseInt(req.params.id))
+    if (!card) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
 
-  const card = await prisma.card.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
+    const isMember = await boardRepo.checkMembership(req.userId!, card.list.board.id)
+    if (!isMember) {
+      res.status(403).json({ error: 'Not authorized' })
+      return
+    }
+
+    res.json({
+      ...card,
+      labels: card.labels.map(cl => cl.label)
+    })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get card', details: (error as Error).message })
   }
-  const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-  // ANTI-PATTERN: N+1 for labels
-  const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
-  const labels = []
-  for (const cl of cardLabels) {
-    const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
-    labels.push(label)
-  }
-  res.json({ ...card, comments, labels })
 })
 
 // POST /cards — create card
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
+    const { title, description, listId, assigneeId } = req.body
+    const position = await cardRepo.count(listId)
+    const card = await cardRepo.create(title, description, listId, assigneeId, position)
+    res.status(201).json(card)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create card', details: (error as Error).message })
   }
-
-  const { title, description, listId, assigneeId } = req.body
-  // ANTI-PATTERN: position not calculated — just appended with no ordering logic
-  const count = await prisma.card.count({ where: { listId } })
-  const card = await prisma.card.create({
-    data: { title, description, listId, assigneeId, position: count },
-  })
-  res.status(201).json(card)
 })
 
 // PATCH /cards/:id/move — move card to different list
-router.patch('/:id/move', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
-
+router.patch('/:id/move', verifyToken, async (req: AuthRequest, res: Response) => {
   const cardId = parseInt(req.params.id)
   const { targetListId, position } = req.body
 
   try {
-    const card = await prisma.card.findUnique({ where: { id: cardId }, include: { list: true } })
+    const card = await cardRepo.findById(cardId)
     if (!card) {
       res.status(404).json({ error: 'Not found' })
+      return
+    }
+
+    const isMember = await boardRepo.checkMembership(req.userId!, card.list.board.id)
+    if (!isMember) {
+      res.status(403).json({ error: 'Not authorized to move this card' })
       return
     }
 
@@ -89,7 +73,7 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
       const activityEvent = await tx.activityEvent.create({
         data: {
           boardId,
-          actorId: userId,
+          actorId: req.userId!,
           eventType: 'card_moved',
           cardId,
           fromListId,
@@ -107,34 +91,52 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
 })
 
 // POST /cards/:id/comments — add comment
-router.post('/:id/comments', async (req: Request, res: Response) => {
-  let userId: number
+router.post('/:id/comments', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const { content } = req.body
+    const cardId = parseInt(req.params.id)
 
-  const { content } = req.body
-  const cardId = parseInt(req.params.id)
-  const comment = await prisma.comment.create({ data: { content, cardId, userId } })
-  res.status(201).json(comment)
+    const card = await cardRepo.findById(cardId)
+    if (!card) {
+      res.status(404).json({ error: 'Card not found' })
+      return
+    }
+
+    const isMember = await boardRepo.checkMembership(req.userId!, card.list.board.id)
+    if (!isMember) {
+      res.status(403).json({ error: 'Not authorized' })
+      return
+    }
+
+    const comment = await commentRepo.create(content, cardId, req.userId!)
+    res.status(201).json(comment)
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create comment', details: (error as Error).message })
+  }
 })
 
 // DELETE /cards/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
-    verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+    const cardId = parseInt(req.params.id)
+    const card = await cardRepo.findById(cardId)
 
-  const cardId = parseInt(req.params.id)
-  // ANTI-PATTERN: no ownership check — any authenticated user can delete any card
-  await prisma.card.delete({ where: { id: cardId } })
-  res.json({ ok: true })
+    if (!card) {
+      res.status(404).json({ error: 'Not found' })
+      return
+    }
+
+    const isMember = await boardRepo.checkMembership(req.userId!, card.list.board.id)
+    if (!isMember) {
+      res.status(403).json({ error: 'Not authorized' })
+      return
+    }
+
+    await cardRepo.delete(cardId)
+    res.json({ ok: true })
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete card', details: (error as Error).message })
+  }
 })
 
 export default router
