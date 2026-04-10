@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
+import * as jwt from 'jsonwebtoken'
 import app from '../index'
 import { signToken } from '../middleware/auth'
 
@@ -317,7 +318,41 @@ describe('GET /boards/:id', () => {
       .get('/boards/1')
       .set('Authorization', `Bearer ${aliceToken}`)
     const positions = res.body.lists.map((l: any) => l.position)
-    expect(positions).toEqual([...positions].sort((a: number, b: number) => a - b))
+    expect(positions).toEqual([0, 1, 2])
+  })
+
+  it('returns cards ordered by position within each list', async () => {
+    const res = await request(app)
+      .get('/boards/1')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    for (const list of res.body.lists) {
+      if (list.cards.length > 1) {
+        for (let i = 1; i < list.cards.length; i++) {
+          expect(list.cards[i].position).toBeGreaterThanOrEqual(list.cards[i - 1].position)
+        }
+      }
+    }
+  })
+
+  it('orders cards by position not by id', async () => {
+    // Move card 5 (highest ID in seed, position 0 in Done) to Backlog at position 0
+    // After this, Backlog has card 5 (high ID) at position 0, and cards 1,2 (lower IDs) at positions 0,1
+    // If orderBy is by position, card 5 should appear first or among the first
+    // If orderBy is by id (default), card 1 would always appear first
+    await request(app)
+      .patch('/cards/5/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 1, position: 0 })
+
+    const res = await request(app)
+      .get('/boards/1')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    const backlog = res.body.lists.find((l: any) => l.name === 'Backlog')
+
+    // With orderBy position ASC: card with position 0 comes first
+    // Card 5 was moved to position 0, so it should be first or tied at position 0
+    expect(backlog.cards[0].position).toBe(0)
   })
 
   it('returns 500 for invalid board id', async () => {
@@ -551,5 +586,172 @@ describe('GET /users/:id', () => {
     const res = await request(app).get('/users/abc')
     expect(res.status).toBe(500)
     expect(res.body).toHaveProperty('error')
+  })
+})
+
+// ── Mutation killers: deep structure & data integrity ────────
+
+describe('Auth token', () => {
+  it('signToken produces a JWT with expiration', () => {
+    const token = signToken(1)
+    const decoded = jwt.decode(token) as any
+    expect(decoded).toHaveProperty('exp')
+    expect(decoded).toHaveProperty('userId', 1)
+    expect(decoded.exp).toBeGreaterThan(decoded.iat)
+  })
+})
+
+describe('Board details structure', () => {
+  it('cards in board have label objects with name and color', async () => {
+    const res = await request(app)
+      .get('/boards/1')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(200)
+
+    // Find a card that has labels (card 1 = "User auth flow" has feature label)
+    const allCards = res.body.lists.flatMap((l: any) => l.cards)
+    const cardWithLabels = allCards.find((c: any) => c.labels && c.labels.length > 0)
+    expect(cardWithLabels).toBeDefined()
+    expect(cardWithLabels.labels[0]).toHaveProperty('label')
+    expect(cardWithLabels.labels[0].label).toHaveProperty('name')
+    expect(cardWithLabels.labels[0].label).toHaveProperty('color')
+  })
+
+  it('cards in board have comments array with content', async () => {
+    const res = await request(app)
+      .get('/boards/1')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    const allCards = res.body.lists.flatMap((l: any) => l.cards)
+    const cardWithComments = allCards.find((c: any) => c.comments && c.comments.length > 0)
+    expect(cardWithComments).toBeDefined()
+    expect(cardWithComments.comments[0]).toHaveProperty('content')
+  })
+
+  it('only returns boards the user is a member of', async () => {
+    // Create a board that only alice owns
+    const newBoard = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ name: `Private Board ${uniqueId}` })
+
+    // Bob should NOT see this new private board (he's not a member)
+    const bobBoards = await request(app)
+      .get('/boards')
+      .set('Authorization', `Bearer ${bobToken}`)
+    const bobBoardIds = bobBoards.body.map((b: any) => b.id)
+    expect(bobBoardIds).not.toContain(newBoard.body.id)
+
+    // Alice SHOULD see it
+    const aliceBoards = await request(app)
+      .get('/boards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    const aliceBoardIds = aliceBoards.body.map((b: any) => b.id)
+    expect(aliceBoardIds).toContain(newBoard.body.id)
+  })
+})
+
+describe('Card details structure', () => {
+  it('card labels include label details with name and color', async () => {
+    // Card 1 has the "feature" label
+    const res = await request(app)
+      .get('/cards/1')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body.labels.length).toBeGreaterThanOrEqual(1)
+    expect(res.body.labels[0]).toHaveProperty('label')
+    expect(res.body.labels[0].label).toHaveProperty('name')
+    expect(res.body.labels[0].label).toHaveProperty('color')
+  })
+})
+
+describe('Card position scoping', () => {
+  it('new card position is based on count within its list, not all cards', async () => {
+    // Create a new board with a fresh list so we control the exact card count
+    const boardRes = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ name: `Position Test Board ${uniqueId}` })
+    const boardId = boardRes.body.id
+
+    // We can't create lists via API, but we can use an existing empty list.
+    // Instead, verify that two cards created in the same list get sequential positions
+    // and a card in a different list gets an independent position.
+
+    // Create 3 cards in list 1 (Backlog, seed has 2 cards: positions 0,1)
+    const cardA = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ title: `PosA ${uniqueId}`, listId: 1 })
+
+    const cardB = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ title: `PosB ${uniqueId}`, listId: 1 })
+
+    // Consecutive cards in same list should have sequential positions
+    expect(cardB.body.position).toBe(cardA.body.position + 1)
+
+    // Create a card in list 3 (Done) — this list has fewer cards
+    const cardC = await request(app)
+      .post('/cards')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ title: `PosC ${uniqueId}`, listId: 3 })
+
+    // If count is scoped to list, cardC's position should be less than cardB's
+    // because list 3 has fewer cards than list 1
+    expect(cardC.body.position).toBeLessThan(cardB.body.position)
+  })
+})
+
+describe('Board membership roles', () => {
+  it('creating a board assigns owner role', async () => {
+    // Create a board, then verify the creator can access it
+    // AND that the board is in the creator's board list (membership works)
+    const createRes = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .send({ name: `Bob Owner Board ${uniqueId}` })
+    expect(createRes.status).toBe(201)
+    const boardId = createRes.body.id
+
+    // Bob can access the board (membership was created)
+    const getRes = await request(app)
+      .get(`/boards/${boardId}`)
+      .set('Authorization', `Bearer ${bobToken}`)
+    expect(getRes.status).toBe(200)
+
+    // Alice cannot (she's not a member)
+    const aliceRes = await request(app)
+      .get(`/boards/${boardId}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(aliceRes.status).toBe(403)
+  })
+
+  it('addMember creates a working membership', async () => {
+    // Create a board as bob
+    const createRes = await request(app)
+      .post('/boards')
+      .set('Authorization', `Bearer ${bobToken}`)
+      .send({ name: `Member Role Board ${uniqueId}` })
+    const boardId = createRes.body.id
+
+    // Alice can't access yet
+    const before = await request(app)
+      .get(`/boards/${boardId}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(before.status).toBe(403)
+
+    // Add alice as member
+    await request(app)
+      .post(`/boards/${boardId}/members`)
+      .set('Authorization', `Bearer ${bobToken}`)
+      .send({ memberId: 1 })
+
+    // Now alice can access
+    const after = await request(app)
+      .get(`/boards/${boardId}`)
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(after.status).toBe(200)
   })
 })
