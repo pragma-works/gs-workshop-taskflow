@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "0b85f3f",
+    "commit": "d4746ce",
     "branch": "participant/P026",
-    "timestamp": "2026-04-10T20:57:18.613Z",
+    "timestamp": "2026-04-10T21:01:40.144Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -19,12 +19,12 @@
       "violations": []
     },
     "verifiable": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "Tests: 4 passed, 0 failed | Coverage: 14.3%",
-      "testsPassed": 4,
+      "details": "Tests: 22 passed, 0 failed | Coverage: 80.6%",
+      "testsPassed": 22,
       "testsFailed": 0,
-      "coveragePct": 14.28
+      "coveragePct": 80.59
     },
     "defended": {
       "score": 1,
@@ -34,7 +34,7 @@
     "auditable": {
       "score": 1,
       "max": 2,
-      "details": "Conventional commits: 25/25 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "details": "Conventional commits: 27/27 (100%) | Decision log: missing — add a doc recording one design choice you made and why",
       "conventionalPct": 1,
       "hasDecisionLog": false
     },
@@ -49,7 +49,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 6,
+      "score": 7,
       "max": 8
     },
     "total_with_live_tests": {
@@ -71,10 +71,10 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 2.76,
+    "duplicatePct": 2.31,
     "branchCount": 21,
-    "testCoverage": 14.28,
-    "testCount": 4,
+    "testCoverage": 80.59,
+    "testCount": 22,
     "depCount": 4
   }
 }
