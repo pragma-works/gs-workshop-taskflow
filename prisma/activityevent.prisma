@@ -1,0 +1,13 @@
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int?
+  userId    Int
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  board   Board @relation(fields: [boardId], references: [id])
+  card    Card? @relation(fields: [cardId], references: [id])
+  user    User  @relation(fields: [userId], references: [id])
+}
