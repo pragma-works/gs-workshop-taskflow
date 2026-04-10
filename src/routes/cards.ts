@@ -69,26 +69,54 @@ router.patch('/:id/move', async (req: Request, res: Response) => {
 
   const cardId = parseInt(req.params.id)
   const { targetListId, position } = req.body
+  const CARD_NOT_FOUND = 'Card not found'
+  const TARGET_LIST_NOT_FOUND = 'Target list not found'
 
-  const card = await prisma.card.findUnique({ where: { id: cardId } })
-  if (!card) {
-    res.status(404).json({ error: 'Not found' })
-    return
+  try {
+    const event = await prisma.$transaction(async (tx) => {
+      const card = await tx.card.findUnique({
+        where: { id: cardId },
+        include: { list: true },
+      })
+
+      if (!card) {
+        throw new Error(CARD_NOT_FOUND)
+      }
+
+      const targetList = await tx.list.findUnique({ where: { id: targetListId } })
+
+      if (!targetList) {
+        throw new Error(TARGET_LIST_NOT_FOUND)
+      }
+
+      await tx.card.update({
+        where: { id: cardId },
+        data: { listId: targetListId, position },
+      })
+
+      return tx.activityEvent.create({
+        data: {
+          boardId: targetList.boardId,
+          actorId: userId,
+          eventType: 'card_moved',
+          cardId,
+          fromListId: card.listId,
+          toListId: targetListId,
+        },
+      })
+    })
+
+    res.json({ ok: true, event })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+
+    if (message === CARD_NOT_FOUND || message === TARGET_LIST_NOT_FOUND) {
+      res.status(404).json({ error: message })
+      return
+    }
+
+    res.status(500).json({ error: 'Move failed', details: message })
   }
-
-  // ANTI-PATTERN: no ownership/membership check before moving
-
-  const fromListId = card.listId
-
-  // ANTI-PATTERN: two separate writes — no transaction
-  // If the second write fails, card is moved but activity is not logged → state desync
-  await prisma.card.update({ where: { id: cardId }, data: { listId: targetListId, position } })
-
-  // Log the move — in a separate write, outside any transaction
-  // (This is also where participants discover the desync risk)
-  console.log(`Card ${cardId} moved from list ${fromListId} to ${targetListId} by user ${userId}`)
-
-  res.json({ ok: true })
 })
 
 // POST /cards/:id/comments — add comment

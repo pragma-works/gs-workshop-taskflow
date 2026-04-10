@@ -18,6 +18,7 @@ model User {
   boards       BoardMember[]
   cards        Card[]        @relation("assignee")
   comments     Comment[]
+  activityEvents ActivityEvent[] @relation("ActivityActor")
 }
 
 model Board {
@@ -26,6 +27,7 @@ model Board {
   createdAt DateTime      @default(now())
   members   BoardMember[]
   lists     List[]
+  activityEvents ActivityEvent[]
 }
 
 model BoardMember {
@@ -45,6 +47,8 @@ model List {
   boardId   Int
   board     Board    @relation(fields: [boardId], references: [id])
   cards     Card[]
+  activityEventsFrom ActivityEvent[] @relation("ActivityFromList")
+  activityEventsTo   ActivityEvent[] @relation("ActivityToList")
 }
 
 model Card {
@@ -60,6 +64,7 @@ model Card {
   assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
   comments    Comment[]
   labels      CardLabel[]
+  activityEvents ActivityEvent[]
 }
 
 model Label {
@@ -86,4 +91,20 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id         Int      @id @default(autoincrement())
+  boardId    Int
+  actorId    Int
+  eventType  String
+  cardId     Int?
+  fromListId Int?
+  toListId   Int?
+  createdAt  DateTime @default(now())
+  board      Board    @relation(fields: [boardId], references: [id])
+  actor      User     @relation("ActivityActor", fields: [actorId], references: [id])
+  card       Card?    @relation(fields: [cardId], references: [id])
+  fromList   List?    @relation("ActivityFromList", fields: [fromListId], references: [id])
+  toList     List?    @relation("ActivityToList", fields: [toListId], references: [id])
 }
