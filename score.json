@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "4e6874c",
+    "commit": "e8e210b",
     "branch": "participant/P017",
-    "timestamp": "2026-04-10T20:40:37.297Z",
+    "timestamp": "2026-04-10T20:58:22.305Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -38,8 +38,8 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 29/29 (100%) | Decision log: present",
-      "conventionalPct": 1,
+      "details": "Conventional commits: 31/32 (97%) | Decision log: present",
+      "conventionalPct": 0.96875,
       "hasDecisionLog": true
     },
     "composable": {
@@ -74,7 +74,7 @@
     "eslintErrors": 0,
     "eslintWarnings": 0,
     "auditCritical": 0,
-    "auditHigh": 1,
+    "auditHigh": 0,
     "duplicatePct": 7.4,
     "branchCount": 17,
     "testCoverage": 0,
