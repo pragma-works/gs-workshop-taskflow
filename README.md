@@ -66,3 +66,28 @@ Executable and Composable are scored via hidden live tests after the session. Th
 - Comments are attached to cards, not boards
 - JWT secret comes from an env var, never hardcoded
 - Every endpoint has at least one test
+
+---
+
+## Implemented in this branch
+
+This branch adds an Activity Feed and refactors DB access into a repository layer.
+
+- New model: ActivityEvent (Prisma).
+- New endpoints:
+  - GET /boards/:id/activity — returns all events (auth + must be a board member)
+  - GET /boards/:id/activity/preview — last 10 events (no auth)
+- Card operations now log events transactionally:
+  - PATCH /cards/:id/move → logs action: "card_moved"
+  - POST /cards/:id/comments → logs action: "comment_added"
+
+## How to run
+
+1. npm install
+2. npm run db:push
+3. npm run db:seed
+4. npm run dev
+
+Use POST /users/login to get a token for authenticated endpoints.
+
+Tests added: src/tests/basic.test.ts and src/tests/activity.test.ts (run with npm test).

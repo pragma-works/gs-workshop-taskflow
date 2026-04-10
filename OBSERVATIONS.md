@@ -5,16 +5,16 @@ One sentence per question — no pressure to write more.
 
 ## What worked well?
 
-<!-- Replace with one sentence: what felt smooth or productive today? -->
+Refactoring database access into a repository layer and centralizing JWT auth made implementing the Activity Feed and transactional helpers straightforward and testable.
 
 ## What slowed you down?
 
-<!-- Replace with one sentence: friction, confusion, or time sinks? -->
+Prisma/SQLite schema quirks (Json not supported) and missing DATABASE_URL plus initial tsc/ts-node setup caused the most delays.
 
 ## How did you handle git commits today?
 
-<!-- Replace with one of: typed commands manually / told the AI / mixed -->
+Mixed: used the AI to draft changes and commit messages, and ran git commands locally for actual commits.
 
 ## Anything surprising?
 
-<!-- Optional: anything the AI did or didn't do that you didn't expect? -->
+Storing activity.meta as a string for SQLite compatibility required careful stringify/parse handling in repositories and routes; tests revealed a few FK timing issues that needed cleanup ordering.

@@ -18,6 +18,7 @@ model User {
   boards       BoardMember[]
   cards        Card[]        @relation("assignee")
   comments     Comment[]
+  activity     ActivityEvent[]
 }
 
 model Board {
@@ -26,6 +27,7 @@ model Board {
   createdAt DateTime      @default(now())
   members   BoardMember[]
   lists     List[]
+  activity  ActivityEvent[]
 }
 
 model BoardMember {
@@ -60,6 +62,7 @@ model Card {
   assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
   comments    Comment[]
   labels      CardLabel[]
+  activity    ActivityEvent[]
 }
 
 model Label {
@@ -86,4 +89,18 @@ model Comment {
   userId    Int
   card      Card     @relation(fields: [cardId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   Int
+  cardId    Int?
+  userId    Int?
+  action    String
+  meta      String?
+  createdAt DateTime @default(now())
+
+  board Board @relation(fields: [boardId], references: [id])
+  card  Card?  @relation(fields: [cardId], references: [id])
+  user  User?  @relation(fields: [userId], references: [id])
 }

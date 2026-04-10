@@ -1,24 +1,11 @@
 import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import { verifyToken } from '../middleware/auth'
+import * as repo from '../repositories'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and cards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
-
-// ANTI-PATTERN: membership check inline in route handler
 async function checkMember(userId: number, boardId: number): Promise<boolean> {
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
-  })
+  const membership = await repo.findBoardMemberByUserAndBoard(userId, boardId)
   return membership !== null
 }
 
@@ -32,11 +19,10 @@ router.get('/', async (req: Request, res: Response) => {
     return
   }
 
-  const memberships = await prisma.boardMember.findMany({ where: { userId } })
+  const memberships = await repo.findBoardMembersByUser(userId)
   const boards = []
-  // ANTI-PATTERN: N+1 — query per membership instead of a join
   for (const m of memberships) {
-    const board = await prisma.board.findUnique({ where: { id: m.boardId } })
+    const board = await repo.findBoardById(m.boardId)
     boards.push(board)
   }
   res.json(boards)
@@ -59,31 +45,24 @@ router.get('/:id', async (req: Request, res: Response) => {
     return
   }
 
-  const board = await prisma.board.findUnique({ where: { id: boardId } })
+  const board = await repo.findBoardById(boardId)
   if (!board) {
     res.status(404).json({ error: 'Board not found' })
     return
   }
 
-  const lists = await prisma.list.findMany({ where: { boardId }, orderBy: { position: 'asc' } })
+  const lists = await repo.findListsByBoard(boardId)
 
   const result = []
-  // ANTI-PATTERN: THE cardinal N+1
-  // For each list: query cards
-  // For each card: query comments
-  // For each card: query labels
-  // Total queries = 1 (board) + 1 (lists) + N (cards per list) + N*M (comments per card) + N*M (labels per card)
   for (const list of lists) {
-    const cards = await prisma.card.findMany({ where: { listId: list.id }, orderBy: { position: 'asc' } })
+    const cards = await repo.findCardsByList(list.id)
     const cardsWithDetails = []
     for (const card of cards) {
-      // Query per card — comments
-      const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-      // Query per card — labels (N+1 inside N+1)
-      const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
+      const comments = await repo.findCommentsByCard(card.id)
+      const cardLabels = await repo.findCardLabelsByCard(card.id)
       const labels = []
       for (const cl of cardLabels) {
-        const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
+        const label = await repo.findLabelById(cl.labelId)
         labels.push(label)
       }
       cardsWithDetails.push({ ...card, comments, labels })
@@ -92,6 +71,54 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 
   res.json({ ...board, lists: result })
+})
+
+// GET /boards/:id/activity — full activity feed (requires auth and membership)
+router.get('/:id/activity', async (req: Request, res: Response) => {
+  let userId: number
+  try {
+    userId = verifyToken(req)
+  } catch {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+  const boardId = parseInt(req.params.id)
+  const isMember = await checkMember(userId, boardId)
+  if (!isMember) {
+    res.status(403).json({ error: 'Not a board member' })
+    return
+  }
+  const events = await repo.findActivityEventsByBoard(boardId)
+  const parsed = events.map(e => {
+    let parsedMeta: any = null
+    if (e.meta) {
+      try {
+        parsedMeta = JSON.parse(e.meta)
+      } catch (err) {
+        parsedMeta = e.meta
+      }
+    }
+    return { ...e, meta: parsedMeta }
+  })
+  res.json({ events: parsed })
+})
+
+// GET /boards/:id/activity/preview — last 10 events, no auth required (smoke)
+router.get('/:id/activity/preview', async (req: Request, res: Response) => {
+  const boardId = parseInt(req.params.id)
+  const events = await repo.findActivityEventsPreview(boardId)
+  const parsed = events.map(e => {
+    let parsedMeta: any = null
+    if (e.meta) {
+      try {
+        parsedMeta = JSON.parse(e.meta)
+      } catch (err) {
+        parsedMeta = e.meta
+      }
+    }
+    return { ...e, meta: parsedMeta }
+  })
+  res.json({ events: parsed })
 })
 
 // POST /boards — create board
@@ -105,12 +132,12 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   const { name } = req.body
-  const board = await prisma.board.create({ data: { name } })
-  await prisma.boardMember.create({ data: { userId, boardId: board.id, role: 'owner' } })
+  const board = await repo.createBoard(name)
+  await repo.createBoardMember({ userId, boardId: board.id, role: 'owner' })
   res.status(201).json(board)
 })
 
-// POST /boards/:id/members — add member
+// POST /boards/:id/members — add member (only owner)
 router.post('/:id/members', async (req: Request, res: Response) => {
   let userId: number
   try {
@@ -122,8 +149,15 @@ router.post('/:id/members', async (req: Request, res: Response) => {
 
   const boardId = parseInt(req.params.id)
   const { memberId } = req.body
-  // ANTI-PATTERN: no check that current user is owner before adding members
-  await prisma.boardMember.create({ data: { userId: memberId, boardId, role: 'member' } })
+
+  // Check current user's membership and role
+  const membership = await repo.findBoardMemberByUserAndBoard(userId, boardId)
+  if (!membership || membership.role !== 'owner') {
+    res.status(403).json({ error: 'Only board owner can add members' })
+    return
+  }
+
+  await repo.createBoardMember({ userId: memberId, boardId, role: 'member' })
   res.status(201).json({ ok: true })
 })
 
