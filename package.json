@@ -11,7 +11,6 @@
     "db:seed": "ts-node prisma/seed.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:activity": "node -r ts-node/register -r ./src/tests/env-setup.js --test src/tests/activity.test.ts",
     "typecheck": "tsc --noEmit",
     "score": "tsx scripts/score.ts"
   },

@@ -1,233 +1,272 @@
 /**
- * Integration tests for the Activity Feed feature.
- * Runner : Node 20 built-in `node:test` (no extra framework).
- * DB     : isolated SQLite test.db, set via env-setup.js --require.
- * HTTP   : Node 20 built-in fetch against a real Express server.
+ * Integration tests — Activity Feed feature
+ *
+ * Stack  : Vitest 3 + supertest (repo's existing test dependencies)
+ * DB     : isolated prisma/test.db (set in vitest.config.ts env)
+ * HTTP   : supertest against the Express app (no port binding)
+ *
+ * Suites
+ *  1. GET /boards/:id/activity          (auth required)
+ *  2. GET /boards/:id/activity/preview  (no auth)
+ *  3. PATCH /cards/:id/move             (+ activity event creation)
+ *  4. Atomicity / rollback              (transaction failure -> state unchanged)
+ *  5. Security regression               (no password fields in responses)
  */
-import { describe, it, before, after } from 'node:test'
-import assert from 'node:assert/strict'
-import { execSync } from 'node:child_process'
-import http from 'node:http'
-import type { AddressInfo } from 'node:net'
-import prisma from '../db'
-import app from '../index'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
+import { agent, provisionDb, getToken, createTempUser, seedEvent, prisma } from './helpers'
 
-// ─── Server lifecycle ────────────────────────────────────────────────────────
+// --- Global setup ------------------------------------------------------------
 
-let server: http.Server
-let base: string
 let aliceToken: string
 
-before(async () => {
-  // Provision test DB from current schema then seed it.
-  execSync('npx prisma db push --accept-data-loss --skip-generate', { stdio: 'pipe' })
-  execSync('npx ts-node prisma/seed.ts', { stdio: 'pipe' })
-
-  // Bind to a random OS-assigned port so we never collide with the dev server.
-  server = http.createServer(app)
-  await new Promise<void>(resolve => server.listen(0, resolve))
-  base = `http://localhost:${(server.address() as AddressInfo).port}`
-
-  // Obtain a token for alice (used across all suites).
-  const res = await fetch(`${base}/users/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'alice@test.com', password: 'password123' }),
-  })
-  aliceToken = ((await res.json()) as { token: string }).token
+beforeAll(async () => {
+  provisionDb()
+  aliceToken = await getToken('alice@test.com', 'password123')
 })
 
-after(async () => {
-  server.close()
-  await prisma.$disconnect()
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
-// ─── HTTP helpers ─────────────────────────────────────────────────────────────
-
-async function getJSON(path: string, token?: string) {
-  const headers: Record<string, string> = {}
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${base}${path}`, { headers })
-  return { status: res.status, body: await res.json() }
-}
-
-async function patchJSON(path: string, body: unknown, token?: string) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${base}${path}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(body),
-  })
-  return { status: res.status, body: await res.json() }
-}
-
-// ─── Suite 1: GET /boards/:id/activity ──────────────────────────────────────
+// --- Suite 1: GET /boards/:id/activity ---------------------------------------
 
 describe('GET /boards/:id/activity', () => {
-  before(async () => {
+  beforeEach(async () => {
     await prisma.activityEvent.deleteMany()
   })
 
   it('returns 401 without auth token', async () => {
-    const { status, body } = await getJSON('/boards/1/activity')
-    assert.equal(status, 401)
-    assert.equal((body as { error: string }).error, 'Unauthorized')
+    const res = await agent.get('/boards/1/activity')
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual({ error: 'Unauthorized' })
   })
 
   it('returns 200 with empty array when no events exist', async () => {
-    const { status, body } = await getJSON('/boards/1/activity', aliceToken)
-    assert.equal(status, 200)
-    assert.deepEqual(body, [])
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual([])
   })
 
   it('returns 403 for a user who is not a board member', async () => {
-    // Register a user who has no board membership
-    const reg = await fetch(`${base}/users/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'outsider@test.com', password: 'pass123', name: 'Outsider' }),
-    })
-    const { id: outsiderId } = (await reg.json()) as { id: number }
-    const login = await fetch(`${base}/users/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'outsider@test.com', password: 'pass123' }),
-    })
-    const { token: outsiderToken } = (await login.json()) as { token: string }
+    const { id, token: outsiderToken } = await createTempUser('outsider@test.com', 'Outsider')
 
-    const { status, body } = await getJSON('/boards/1/activity', outsiderToken)
-    assert.equal(status, 403)
-    assert.equal((body as { error: string }).error, 'Not a board member')
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${outsiderToken}`)
 
-    await prisma.user.delete({ where: { id: outsiderId } })
+    expect(res.status).toBe(403)
+    expect(res.body).toEqual({ error: 'Not a board member' })
+
+    await prisma.user.delete({ where: { id } })
   })
 
   it('returns events sorted descending by timestamp', async () => {
     const t1 = new Date('2024-01-01T10:00:00Z')
     const t2 = new Date('2024-01-01T10:00:01Z')
     await prisma.activityEvent.create({
-      data: { boardId: 1, cardId: 1, userId: 1, eventType: 'card_created', cardTitle: 'First', toListName: 'Backlog', createdAt: t1 },
+      data: { boardId: 1, cardId: 1, userId: 1, eventType: 'card_created', cardTitle: 'First',  toListName: 'Backlog', createdAt: t1 },
     })
     await prisma.activityEvent.create({
       data: { boardId: 1, cardId: 2, userId: 1, eventType: 'card_created', cardTitle: 'Second', toListName: 'Backlog', createdAt: t2 },
     })
 
-    const { status, body } = await getJSON('/boards/1/activity', aliceToken)
-    assert.equal(status, 200)
-    const events = body as Array<{ timestamp: string; cardTitle: string }>
-    assert.equal(events.length, 2)
-    assert.ok(
-      new Date(events[0].timestamp) >= new Date(events[1].timestamp),
-      'Events must be in descending timestamp order',
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    expect(res.status).toBe(200)
+    const events = res.body as Array<{ timestamp: string; cardTitle: string }>
+    expect(events).toHaveLength(2)
+    expect(new Date(events[0].timestamp).getTime()).toBeGreaterThanOrEqual(
+      new Date(events[1].timestamp).getTime(),
     )
-    assert.equal(events[0].cardTitle, 'Second')
-    assert.equal(events[1].cardTitle, 'First')
+    expect(events[0].cardTitle).toBe('Second')
+    expect(events[1].cardTitle).toBe('First')
   })
 
-  it('returned event shape includes actorName, actorId, and cardTitle', async () => {
-    await prisma.activityEvent.deleteMany()
-    await prisma.activityEvent.create({
-      data: { boardId: 1, cardId: 1, userId: 1, eventType: 'card_moved', cardTitle: 'User auth flow', fromListName: 'Backlog', toListName: 'In Progress' },
-    })
+  it('returned event includes actorName, actorId, cardTitle, eventType, and timestamp', async () => {
+    await seedEvent({ fromListName: 'Backlog', toListName: 'In Progress' })
 
-    const { status, body } = await getJSON('/boards/1/activity', aliceToken)
-    assert.equal(status, 200)
-    const [event] = body as Array<Record<string, unknown>>
-    assert.equal(event['actorName'],  'Alice')
-    assert.equal(event['actorId'],    1)
-    assert.equal(event['cardTitle'],  'User auth flow')
-    assert.equal(event['eventType'],  'card_moved')
-    assert.ok('timestamp' in event,   'event must have a timestamp field')
-    assert.ok('boardId'   in event,   'event must have boardId')
-    assert.ok('cardId'    in event,   'event must have cardId')
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    expect(res.status).toBe(200)
+    const [event] = res.body as Array<Record<string, unknown>>
+    expect(event.actorName).toBe('Alice')
+    expect(event.actorId).toBe(1)
+    expect(event.cardTitle).toBe('User auth flow')
+    expect(event.eventType).toBe('card_moved')
+    expect(event).toHaveProperty('timestamp')
+    expect(event).toHaveProperty('boardId')
+    expect(event).toHaveProperty('cardId')
   })
 })
 
-// ─── Suite 2: GET /boards/:id/activity/preview ──────────────────────────────
+// --- Suite 2: GET /boards/:id/activity/preview -------------------------------
 
 describe('GET /boards/:id/activity/preview', () => {
-  before(async () => {
+  beforeEach(async () => {
     await prisma.activityEvent.deleteMany()
   })
 
   it('returns 200 without any auth token', async () => {
-    const { status, body } = await getJSON('/boards/1/activity/preview')
-    assert.equal(status, 200)
-    assert.ok(Array.isArray(body), 'body must be an array')
+    const res = await agent.get('/boards/1/activity/preview')
+    expect(res.status).toBe(200)
+    expect(Array.isArray(res.body)).toBe(true)
   })
 
-  it('returns the same events as the authenticated endpoint', async () => {
-    await prisma.activityEvent.create({
-      data: { boardId: 1, cardId: 1, userId: 1, eventType: 'card_commented', cardTitle: 'User auth flow' },
-    })
+  it('returns the same payload as the authenticated endpoint', async () => {
+    await seedEvent()
 
-    const { body: preview } = await getJSON('/boards/1/activity/preview')
-    const { body: authed }  = await getJSON('/boards/1/activity', aliceToken)
-    assert.deepEqual(preview, authed)
+    const preview = await agent.get('/boards/1/activity/preview')
+    const authed  = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    expect(preview.status).toBe(200)
+    expect(preview.body).toEqual(authed.body)
   })
 })
 
-// ─── Suite 3: PATCH /cards/:id/move + ActivityEvent atomicity ───────────────
+// --- Suite 3: PATCH /cards/:id/move + activity event -------------------------
 
 describe('PATCH /cards/:id/move + activity event', () => {
-  before(async () => {
+  beforeEach(async () => {
     await prisma.activityEvent.deleteMany()
-    // Put card 1 in a known state (Backlog = list 1) before move tests.
     await prisma.card.update({ where: { id: 1 }, data: { listId: 1, position: 0 } })
   })
 
   it('returns 401 without auth token', async () => {
-    const { status, body } = await patchJSON('/cards/1/move', { targetListId: 2, position: 0 })
-    assert.equal(status, 401)
-    assert.equal((body as { error: string }).error, 'Unauthorized')
+    const res = await agent
+      .patch('/cards/1/move')
+      .send({ targetListId: 2, position: 0 })
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual({ error: 'Unauthorized' })
   })
 
-  it('card.listId changes in DB after successful move', async () => {
-    const { status } = await patchJSON('/cards/1/move', { targetListId: 2, position: 0 }, aliceToken)
-    assert.equal(status, 200)
+  it('card.listId changes in DB after a successful move', async () => {
+    const res = await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 2, position: 0 })
 
+    expect(res.status).toBe(200)
     const card = await prisma.card.findUniqueOrThrow({ where: { id: 1 } })
-    assert.equal(card.listId, 2, 'card must be in the target list after move')
+    expect(card.listId).toBe(2)
   })
 
   it('inserts exactly one card_moved ActivityEvent', async () => {
-    await prisma.activityEvent.deleteMany()
-    await prisma.card.update({ where: { id: 1 }, data: { listId: 1, position: 0 } })
-
-    await patchJSON('/cards/1/move', { targetListId: 2, position: 0 }, aliceToken)
+    await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 2, position: 0 })
 
     const events = await prisma.activityEvent.findMany()
-    assert.equal(events.length, 1)
-    assert.equal(events[0].eventType, 'card_moved')
+    expect(events).toHaveLength(1)
+    expect(events[0].eventType).toBe('card_moved')
   })
 
   it('event records correct fromListName and toListName', async () => {
-    await prisma.activityEvent.deleteMany()
-    await prisma.card.update({ where: { id: 1 }, data: { listId: 1, position: 0 } })
-
-    await patchJSON('/cards/1/move', { targetListId: 3, position: 0 }, aliceToken)
+    await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 3, position: 0 })
 
     const event = await prisma.activityEvent.findFirstOrThrow()
-    assert.equal(event.fromListName, 'Backlog',   'fromListName must be the source list')
-    assert.equal(event.toListName,   'Done',      'toListName must be the destination list')
+    expect(event.fromListName).toBe('Backlog')
+    expect(event.toListName).toBe('Done')
   })
 
   it('feed response includes actorName and cardTitle for the move event', async () => {
-    await prisma.activityEvent.deleteMany()
-    await prisma.card.update({ where: { id: 1 }, data: { listId: 1, position: 0 } })
+    await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 2, position: 0 })
 
-    await patchJSON('/cards/1/move', { targetListId: 2, position: 0 }, aliceToken)
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
 
-    const { body } = await getJSON('/boards/1/activity', aliceToken)
-    const [event] = body as Array<Record<string, unknown>>
-    assert.equal(event['actorName'], 'Alice')
-    assert.equal(event['cardTitle'], 'User auth flow')
+    const [event] = res.body as Array<Record<string, unknown>>
+    expect(event.actorName).toBe('Alice')
+    expect(event.cardTitle).toBe('User auth flow')
   })
 
   it('returns 400 when targetListId does not exist', async () => {
-    const { status, body } = await patchJSON('/cards/1/move', { targetListId: 9999, position: 0 }, aliceToken)
-    assert.equal(status, 400)
-    assert.equal((body as { error: string }).error, 'Target list not found')
+    const res = await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 9999, position: 0 })
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'Target list not found' })
+  })
+})
+
+// --- Suite 4: Atomicity / rollback -------------------------------------------
+//
+// How the failure is forced:
+//   vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(...)
+//   patches the $transaction method on the singleton that the route handler
+//   already holds a reference to. The spy makes the entire transaction reject
+//   before either SQL statement executes, so neither card.update nor
+//   activityEvent.create can commit — proving the two writes are always atomic.
+
+describe('Atomicity: transaction rollback on failure', () => {
+  beforeEach(async () => {
+    await prisma.activityEvent.deleteMany()
+    await prisma.card.update({ where: { id: 1 }, data: { listId: 1, position: 0 } })
+  })
+
+  it('card does NOT move and NO event is created when $transaction throws', async () => {
+    vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(
+      new Error('forced DB failure'),
+    )
+
+    const res = await agent
+      .patch('/cards/1/move')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .send({ targetListId: 2, position: 0 })
+
+    // Global error handler must return JSON — not raw HTML.
+    expect(res.status).toBe(500)
+    expect(res.body).toHaveProperty('error')
+    expect(res.headers['content-type']).toMatch(/application\/json/)
+    expect(JSON.stringify(res.body)).not.toMatch(/<html/i)
+
+    // Card must NOT have moved.
+    const card = await prisma.card.findUniqueOrThrow({ where: { id: 1 } })
+    expect(card.listId).toBe(1)
+
+    // No activity event must exist.
+    const events = await prisma.activityEvent.findMany()
+    expect(events).toHaveLength(0)
+  })
+})
+
+// --- Suite 5: Security — no password leakage ---------------------------------
+
+describe('Security: activity responses must not expose password fields', () => {
+  beforeEach(async () => {
+    await prisma.activityEvent.deleteMany()
+    await seedEvent()
+  })
+
+  it('GET /boards/:id/activity does not contain password fields', async () => {
+    const res = await agent
+      .get('/boards/1/activity')
+      .set('Authorization', `Bearer ${aliceToken}`)
+
+    expect(res.status).toBe(200)
+    expect(JSON.stringify(res.body)).not.toMatch(/password/i)
+  })
+
+  it('GET /boards/:id/activity/preview does not contain password fields', async () => {
+    const res = await agent.get('/boards/1/activity/preview')
+
+    expect(res.status).toBe(200)
+    expect(JSON.stringify(res.body)).not.toMatch(/password/i)
   })
 })
