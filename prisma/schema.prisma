@@ -92,14 +92,16 @@ model Comment {
 }
 
 model ActivityEvent {
-  id        Int      @id @default(autoincrement())
-  boardId   Int
-  cardId    Int
-  userId    Int
-  type      String   // "card_moved"
-  payload   String   // JSON: { fromListId, fromListName, toListId, toListName, cardTitle }
-  createdAt DateTime @default(now())
-  board     Board    @relation(fields: [boardId], references: [id])
-  card      Card     @relation(fields: [cardId], references: [id])
-  actor     User     @relation("actor", fields: [userId], references: [id])
+  id           Int      @id @default(autoincrement())
+  boardId      Int
+  cardId       Int
+  userId       Int
+  eventType    String   // "card_created" | "card_moved" | "card_commented"
+  cardTitle    String
+  fromListName String?
+  toListName   String?
+  createdAt    DateTime @default(now())
+  board        Board    @relation(fields: [boardId], references: [id])
+  card         Card     @relation(fields: [cardId], references: [id])
+  actor        User     @relation("actor", fields: [userId], references: [id])
 }

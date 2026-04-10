@@ -4,7 +4,41 @@ import { verifyToken } from '../auth'
 
 const router = Router({ mergeParams: true })
 
-// GET /boards/:id/activity — chronological feed of card moves for a board
+function formatEvents(events: Awaited<ReturnType<typeof queryEvents>>) {
+  return events.map(e => ({
+    id:           e.id,
+    boardId:      e.boardId,
+    actorId:      e.actor.id,
+    actorName:    e.actor.name,
+    eventType:    e.eventType,
+    cardId:       e.card.id,
+    cardTitle:    e.cardTitle,
+    fromListName: e.fromListName,
+    toListName:   e.toListName,
+    timestamp:    e.createdAt,
+  }))
+}
+
+function queryEvents(boardId: number) {
+  return prisma.activityEvent.findMany({
+    where: { boardId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: {
+      id:          true,
+      boardId:     true,
+      eventType:   true,
+      cardTitle:   true,
+      fromListName: true,
+      toListName:  true,
+      createdAt:   true,
+      actor:       { select: { id: true, name: true } },
+      card:        { select: { id: true, title: true } },
+    },
+  })
+}
+
+// GET /boards/:id/activity — auth required
 router.get('/', async (req: Request, res: Response) => {
   let userId: number
   try {
@@ -24,21 +58,13 @@ router.get('/', async (req: Request, res: Response) => {
     return
   }
 
-  const events = await prisma.activityEvent.findMany({
-    where: { boardId },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-    select: {
-      id:        true,
-      type:      true,
-      payload:   true,
-      createdAt: true,
-      actor:     { select: { id: true, name: true } },
-      card:      { select: { id: true, title: true } },
-    },
-  })
+  res.json(formatEvents(await queryEvents(boardId)))
+})
 
-  res.json(events.map(e => ({ ...e, payload: JSON.parse(e.payload) })))
+// GET /boards/:id/activity/preview — no auth, for testing
+router.get('/preview', async (req: Request, res: Response) => {
+  const boardId = parseInt(req.params.id)
+  res.json(formatEvents(await queryEvents(boardId)))
 })
 
 export default router
