@@ -1,10 +1,42 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
+import { getAuthenticatedUserId, requireAuth } from '../middleware/auth'
+import { type ActivityService } from '../services/activity-service'
+import { withRouteErrorHandling } from './route-errors'
 
-const router = Router()
+interface ActivityRouterDependencies {
+  activityService: ActivityService
+}
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
-// GET /boards/:id/activity/preview — no-auth testing endpoint
+/**
+ * Creates the activity router and wires activity feed use cases to HTTP endpoints.
+ *
+ * @param {ActivityRouterDependencies} dependencies - Activity use cases required by the router.
+ * @returns {Router} Configured activity router.
+ */
+export function createActivityRouter({ activityService }: ActivityRouterDependencies): Router {
+  const router = Router()
 
-export default router
+  router.get(
+    '/:id/activity/preview',
+    withRouteErrorHandling(async (req: Request, res: Response) => {
+      const preview = await activityService.getBoardActivityPreview(parseInt(req.params.id))
+      res.json(preview)
+    }),
+  )
+
+  router.get(
+    '/:id/activity',
+    requireAuth,
+    withRouteErrorHandling(async (req: Request, res: Response) => {
+      const activity = await activityService.getBoardActivity(
+        getAuthenticatedUserId(req),
+        parseInt(req.params.id),
+      )
+      res.json(activity)
+    }),
+  )
+
+  return router
+}
+
+export default createActivityRouter

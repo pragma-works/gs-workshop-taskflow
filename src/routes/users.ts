@@ -1,56 +1,45 @@
 import { Router, Request, Response } from 'express'
-import * as bcrypt from 'bcryptjs'
-import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import { type UserService } from '../services/user-service'
+import { withRouteErrorHandling } from './route-errors'
 
-const router = Router()
-
-// ANTI-PATTERN: auth helper copy-pasted from boards.ts and cards.ts
-// All three files have identical copies — single change requires 3 edits
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret — same string in boards.ts and cards.ts
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
+interface UsersRouterDependencies {
+  userService: UserService
 }
 
-// POST /users/register
-router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, name } = req.body
-  const hashed = await bcrypt.hash(password, 10)
-  const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
-})
+/**
+ * Creates the users router and wires user use cases to HTTP endpoints.
+ *
+ * @param {UsersRouterDependencies} dependencies - User use cases required by the router.
+ * @returns {Router} Configured users router.
+ */
+export function createUsersRouter({ userService }: UsersRouterDependencies): Router {
+  const router = Router()
 
-// POST /users/login
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body
-  const user = await prisma.user.findUnique({ where: { email } })
-  if (!user) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
-  }
-  const valid = await bcrypt.compare(password, user.password)
-  if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
-  }
-  const token = jwt.sign({ userId: user.id }, 'super-secret-key-change-me', { expiresIn: '7d' })
-  res.json({ token })
-})
+  router.post(
+    '/register',
+    withRouteErrorHandling(async (req: Request, res: Response) => {
+      const user = await userService.registerUser(req.body)
+      res.json(user)
+    }),
+  )
 
-// GET /users/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!user) {
-    res.status(404).json({ error: 'Not found' })
-    return
-  }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
-})
+  router.post(
+    '/login',
+    withRouteErrorHandling(async (req: Request, res: Response) => {
+      const result = await userService.loginUser(req.body)
+      res.json(result)
+    }),
+  )
 
-export default router
+  router.get(
+    '/:id',
+    withRouteErrorHandling(async (req: Request, res: Response) => {
+      const user = await userService.getUserById(parseInt(req.params.id))
+      res.json(user)
+    }),
+  )
+
+  return router
+}
+
+export default createUsersRouter

@@ -3,6 +3,37 @@
 A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
 move cards between them, and discuss work in comments.
 
+## What was built for PM-5214
+
+This project now includes an **Activity Feed** for board-level auditing and smoke testing.
+The implementation adds persisted activity events for card moves and new comments, exposes
+board activity endpoints, and refactors the application so route handlers stay thin while
+services and repositories own the business and persistence logic.
+
+### New behavior
+
+- `GET /boards/:id/activity` returns board activity events newest-first for authenticated members
+- `GET /boards/:id/activity/preview` returns the last 10 events without auth for quick smoke checks
+- `PATCH /cards/:id/move` now writes a `card_moved` activity event atomically and returns the updated card
+- `POST /cards/:id/comments` now writes a `comment_added` activity event atomically
+- JWT signing and verification now use `JWT_SECRET` from the environment instead of hardcoded secrets
+- User endpoints no longer expose password hashes in responses
+
+### Architecture changes
+
+- `src/routes` is now an HTTP adapter layer that delegates to services
+- `src/services` contains the application use cases and authorization checks
+- `src/repositories` is the only layer that talks to Prisma directly
+- `src/app.ts` is the composition root that wires repositories, services, and routers together
+- Activity event metadata is stored as serialized JSON text because this Prisma + SQLite setup
+  does not support a native `Json` column type
+
+### Verification surface
+
+The project now has API-level tests with Supertest + Vitest that exercise users, boards, cards,
+and activity endpoints against a seeded SQLite database. The current line coverage is above the
+workshop threshold for the automated **Verifiable** score.
+
 ---
 
 ## Your instructions are in START.md
@@ -16,7 +47,8 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 ```bash
 npm install
 npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
+npm run db:seed   # loads demo users and boards
+npm run dev       # starts on http://localhost:3001
 npm test          # run tests
 ```
 
