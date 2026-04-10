@@ -1,130 +1,182 @@
-import { Router, Request, Response } from 'express'
-import * as jwt from 'jsonwebtoken'
+import { Prisma } from '@prisma/client'
+import { Router } from 'express'
+import { getUserId, requireAuth } from '../auth'
 import prisma from '../db'
+import { AppError, asyncHandler } from '../errors'
+import { getBoardAccess, requireBoardMember, requireBoardOwner } from '../permissions'
+import { publicUserSelect, toActivityResponse } from '../serializers'
+import { parsePositiveInt, requireString } from '../validation'
 
 const router = Router()
+router.use(requireAuth)
 
-// ANTI-PATTERN: auth helper copy-pasted identically from users.ts and cards.ts
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
+type TransactionClient = Prisma.TransactionClient
 
-// ANTI-PATTERN: membership check inline in route handler
-async function checkMember(userId: number, boardId: number): Promise<boolean> {
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
+router.get('/', asyncHandler(async (req, res) => {
+  const userId = getUserId(req)
+  const boards = await prisma.board.findMany({
+    where: { members: { some: { userId } } },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      members: {
+        where: { userId },
+        select: { role: true },
+      },
+    },
   })
-  return membership !== null
-}
 
-// GET /boards — list boards for current user
-router.get('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
+  const response = []
+  for (const board of boards) {
+    response.push({
+      id: board.id,
+      name: board.name,
+      createdAt: board.createdAt,
+      role: board.members[0]?.role ?? 'member',
+    })
   }
 
-  const memberships = await prisma.boardMember.findMany({ where: { userId } })
-  const boards = []
-  // ANTI-PATTERN: N+1 — query per membership instead of a join
-  for (const m of memberships) {
-    const board = await prisma.board.findUnique({ where: { id: m.boardId } })
-    boards.push(board)
-  }
-  res.json(boards)
-})
+  res.json(response)
+}))
 
-// GET /boards/:id — full board with lists, cards, comments
-router.get('/:id', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+router.get('/:id/activity', asyncHandler(async (req, res) => {
+  const boardId = parsePositiveInt(req.params.id, 'board id')
+  const userId = getUserId(req)
+  await requireBoardMember(userId, boardId)
 
-  const boardId = parseInt(req.params.id)
-  const isMember = await checkMember(userId, boardId)
-  if (!isMember) {
-    res.status(403).json({ error: 'Not a board member' })
-    return
-  }
+  const events = await prisma.activityEvent.findMany({
+    where: { boardId },
+    orderBy: { createdAt: 'desc' },
+  })
 
-  const board = await prisma.board.findUnique({ where: { id: boardId } })
+  res.json(events.map(toActivityResponse))
+}))
+
+router.get('/:id', asyncHandler(async (req, res) => {
+  const userId = getUserId(req)
+  const boardId = parsePositiveInt(req.params.id, 'board id')
+  await requireBoardMember(userId, boardId)
+
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: publicUserSelect,
+          },
+        },
+      },
+      lists: {
+        orderBy: { position: 'asc' },
+        include: {
+          cards: {
+            orderBy: { position: 'asc' },
+            include: {
+              assignee: { select: publicUserSelect },
+              comments: {
+                orderBy: { createdAt: 'asc' },
+                include: {
+                  user: { select: publicUserSelect },
+                },
+              },
+              labels: {
+                include: {
+                  label: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
   if (!board) {
-    res.status(404).json({ error: 'Board not found' })
-    return
+    throw new AppError(404, 'Board not found')
   }
 
-  const lists = await prisma.list.findMany({ where: { boardId }, orderBy: { position: 'asc' } })
+  const members = []
+  for (const member of board.members) {
+    members.push({ role: member.role, user: member.user })
+  }
 
-  const result = []
-  // ANTI-PATTERN: THE cardinal N+1
-  // For each list: query cards
-  // For each card: query comments
-  // For each card: query labels
-  // Total queries = 1 (board) + 1 (lists) + N (cards per list) + N*M (comments per card) + N*M (labels per card)
-  for (const list of lists) {
-    const cards = await prisma.card.findMany({ where: { listId: list.id }, orderBy: { position: 'asc' } })
-    const cardsWithDetails = []
-    for (const card of cards) {
-      // Query per card — comments
-      const comments = await prisma.comment.findMany({ where: { cardId: card.id } })
-      // Query per card — labels (N+1 inside N+1)
-      const cardLabels = await prisma.cardLabel.findMany({ where: { cardId: card.id } })
+  const lists = []
+  for (const list of board.lists) {
+    const cards = []
+    for (const card of list.cards) {
       const labels = []
-      for (const cl of cardLabels) {
-        const label = await prisma.label.findUnique({ where: { id: cl.labelId } })
-        labels.push(label)
+      for (const labelLink of card.labels) {
+        labels.push(labelLink.label)
       }
-      cardsWithDetails.push({ ...card, comments, labels })
+
+      cards.push({
+        id: card.id,
+        title: card.title,
+        description: card.description,
+        position: card.position,
+        dueDate: card.dueDate,
+        listId: card.listId,
+        assigneeId: card.assigneeId,
+        createdAt: card.createdAt,
+        assignee: card.assignee,
+        comments: card.comments,
+        labels,
+      })
     }
-    result.push({ ...list, cards: cardsWithDetails })
+
+    lists.push({
+      id: list.id,
+      name: list.name,
+      position: list.position,
+      boardId: list.boardId,
+      cards,
+    })
   }
 
-  res.json({ ...board, lists: result })
-})
+  res.json({
+    id: board.id,
+    name: board.name,
+    createdAt: board.createdAt,
+    members,
+    lists,
+  })
+}))
 
-// POST /boards — create board
-router.post('/', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
-  }
+router.post('/', asyncHandler(async (req, res) => {
+  const userId = getUserId(req)
+  const name = requireString(req.body.name, 'name', { minLength: 1, maxLength: 120 })
 
-  const { name } = req.body
-  const board = await prisma.board.create({ data: { name } })
-  await prisma.boardMember.create({ data: { userId, boardId: board.id, role: 'owner' } })
+  const board = await prisma.$transaction(async (tx: TransactionClient) => {
+    const createdBoard = await tx.board.create({ data: { name } })
+    await tx.boardMember.create({ data: { userId, boardId: createdBoard.id, role: 'owner' } })
+    return createdBoard
+  })
+
   res.status(201).json(board)
-})
+}))
 
-// POST /boards/:id/members — add member
-router.post('/:id/members', async (req: Request, res: Response) => {
-  let userId: number
-  try {
-    userId = verifyToken(req)
-  } catch {
-    res.status(401).json({ error: 'Unauthorized' })
-    return
+router.post('/:id/members', asyncHandler(async (req, res) => {
+  const currentUserId = getUserId(req)
+  const boardId = parsePositiveInt(req.params.id, 'board id')
+  const memberId = parsePositiveInt(req.body.memberId, 'member id')
+
+  await requireBoardOwner(currentUserId, boardId)
+
+  const user = await prisma.user.findUnique({ where: { id: memberId }, select: { id: true } })
+  if (!user) {
+    throw new AppError(404, 'User not found')
   }
 
-  const boardId = parseInt(req.params.id)
-  const { memberId } = req.body
-  // ANTI-PATTERN: no check that current user is owner before adding members
-  await prisma.boardMember.create({ data: { userId: memberId, boardId, role: 'member' } })
-  res.status(201).json({ ok: true })
-})
+  const existingMembership = await getBoardAccess(memberId, boardId)
+  if (existingMembership) {
+    throw new AppError(409, 'User is already a board member')
+  }
+
+  const membership = await prisma.boardMember.create({
+    data: { userId: memberId, boardId, role: 'member' },
+  })
+
+  res.status(201).json(membership)
+}))
 
 export default router

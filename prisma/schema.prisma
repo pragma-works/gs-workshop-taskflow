@@ -18,6 +18,7 @@ model User {
   boards       BoardMember[]
   cards        Card[]        @relation("assignee")
   comments     Comment[]
+  activity     ActivityEvent[]
 }
 
 model Board {
@@ -26,14 +27,15 @@ model Board {
   createdAt DateTime      @default(now())
   members   BoardMember[]
   lists     List[]
+  activity  ActivityEvent[]
 }
 
 model BoardMember {
   userId    Int
   boardId   Int
   role      String        @default("member")  // "owner" | "member"
-  user      User          @relation(fields: [userId], references: [id])
-  board     Board         @relation(fields: [boardId], references: [id])
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board     Board         @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@id([userId, boardId])
 }
@@ -43,7 +45,7 @@ model List {
   name      String
   position  Int
   boardId   Int
-  board     Board    @relation(fields: [boardId], references: [id])
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards     Card[]
 }
 
@@ -56,10 +58,11 @@ model Card {
   listId      Int
   assigneeId  Int?
   createdAt   DateTime  @default(now())
-  list        List      @relation(fields: [listId], references: [id])
-  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id])
+  list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignee    User?     @relation("assignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   comments    Comment[]
   labels      CardLabel[]
+  activity    ActivityEvent[]
 }
 
 model Label {
@@ -72,8 +75,8 @@ model Label {
 model CardLabel {
   cardId  Int
   labelId Int
-  card    Card  @relation(fields: [cardId], references: [id])
-  label   Label @relation(fields: [labelId], references: [id])
+  card    Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@id([cardId, labelId])
 }
@@ -84,6 +87,26 @@ model Comment {
   createdAt DateTime @default(now())
   cardId    Int
   userId    Int
-  card      Card     @relation(fields: [cardId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityEvent {
+  id             Int               @id @default(autoincrement())
+  boardId        Int
+  actorId        Int
+  actorName      String
+  eventType      String
+  cardId         Int
+  cardTitle      String
+  fromListName   String?
+  toListName     String?
+  commentPreview String?
+  createdAt      DateTime          @default(now())
+  board          Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  actor          User              @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  card           Card              @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId, createdAt])
+  @@index([cardId, createdAt])
 }

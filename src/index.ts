@@ -1,17 +1,22 @@
+import 'dotenv/config'
 import express from 'express'
+import { config } from './config'
 import boardsRouter from './routes/boards'
 import cardsRouter  from './routes/cards'
+import activityRouter from './routes/activity'
 import usersRouter  from './routes/users'
+import { errorHandler } from './errors'
 
 const app = express()
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 
 app.use('/users',  usersRouter)
+app.use('/boards', activityRouter)
 app.use('/boards', boardsRouter)
 app.use('/cards',  cardsRouter)
 
-// ANTI-PATTERN: no global error handler — every unhandled throw returns HTML 500
-const PORT = process.env.PORT || 3001
-app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+app.use(errorHandler)
+
+app.listen(config.port, () => console.log(`taskflow running on :${config.port}`))
 
 export default app

@@ -10,6 +10,7 @@ move cards between them, and discuss work in comments.
 ```bash
 cp .env.example .env
 npm install
+npm run typecheck
 npm run db:push
 npm run db:seed
 npm run dev
@@ -134,3 +135,7 @@ rewards solutions that eliminate them, and the scoring penalizes solutions that 
 - `GET /boards/:id` issues one query per list, one per card, and one per label on each card
 - No global error handler — unhandled throws return raw Express 500 HTML
 - Passwords returned in user responses
+
+## Environment
+
+Set a strong local JWT secret in `.env` before starting the API.

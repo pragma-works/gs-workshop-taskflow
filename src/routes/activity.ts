@@ -1,10 +1,25 @@
 import { Router } from 'express'
+import prisma from '../db'
+import { AppError, asyncHandler } from '../errors'
+import { toActivityResponse } from '../serializers'
+import { parsePositiveInt } from '../validation'
 
 const router = Router()
 
-// TODO: implement activity feed
-// GET /boards/:id/activity  — chronological log of card moves and comments on this board
-// POST /cards/:id/move       — already in cards.ts but needs to write an ActivityEvent
 // GET /boards/:id/activity/preview — no-auth testing endpoint
+router.get('/:id/activity/preview', asyncHandler(async (req, res) => {
+	const boardId = parsePositiveInt(req.params.id, 'board id')
+	const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true } })
+	if (!board) {
+		throw new AppError(404, 'Board not found')
+	}
+
+	const events = await prisma.activityEvent.findMany({
+		where: { boardId },
+		orderBy: { createdAt: 'desc' },
+	})
+
+	res.json(events.map(toActivityResponse))
+}))
 
 export default router

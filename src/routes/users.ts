@@ -1,56 +1,68 @@
-import { Router, Request, Response } from 'express'
+import { Router } from 'express'
 import * as bcrypt from 'bcryptjs'
 import * as jwt from 'jsonwebtoken'
+import { getUserId, requireAuth } from '../auth'
+import { config } from '../config'
 import prisma from '../db'
+import { AppError, asyncHandler } from '../errors'
+import { publicUserSelect, toPublicUser } from '../serializers'
+import { parsePositiveInt, requireEmail, requireString } from '../validation'
 
 const router = Router()
 
-// ANTI-PATTERN: auth helper copy-pasted from boards.ts and cards.ts
-// All three files have identical copies — single change requires 3 edits
-function verifyToken(req: Request): number {
-  const header = req.headers.authorization
-  if (!header) throw new Error('No auth header')
-  const token = header.replace('Bearer ', '')
-  // ANTI-PATTERN: hardcoded secret — same string in boards.ts and cards.ts
-  const payload = jwt.verify(token, 'super-secret-key-change-me') as { userId: number }
-  return payload.userId
-}
-
 // POST /users/register
-router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, name } = req.body
-  const hashed = await bcrypt.hash(password, 10)
-  const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  // ANTI-PATTERN: password hash returned in response
-  res.json(user)
-})
+router.post('/register', asyncHandler(async (req, res) => {
+  const email = requireEmail(req.body.email, 'email')
+  const password = requireString(req.body.password, 'password', { minLength: 8, maxLength: 128 })
+  const name = requireString(req.body.name, 'name', { minLength: 1, maxLength: 100 })
+
+  const existingUser = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+  if (existingUser) {
+    throw new AppError(409, 'Email already in use')
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12)
+  const user = await prisma.user.create({
+    data: { email, password: hashedPassword, name },
+    select: publicUserSelect,
+  })
+
+  res.status(201).json(toPublicUser(user))
+}))
 
 // POST /users/login
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body
+router.post('/login', asyncHandler(async (req, res) => {
+  const email = requireEmail(req.body.email, 'email')
+  const password = requireString(req.body.password, 'password', { minLength: 8, maxLength: 128 })
+
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
+    throw new AppError(401, 'Invalid credentials')
   }
-  const valid = await bcrypt.compare(password, user.password)
-  if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' })
-    return
+
+  const isValid = await bcrypt.compare(password, user.password)
+  if (!isValid) {
+    throw new AppError(401, 'Invalid credentials')
   }
-  const token = jwt.sign({ userId: user.id }, 'super-secret-key-change-me', { expiresIn: '7d' })
-  res.json({ token })
-})
+
+  const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' })
+  res.json({ token, user: toPublicUser(user) })
+}))
 
 // GET /users/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  const user = await prisma.user.findUnique({ where: { id: parseInt(req.params.id) } })
-  if (!user) {
-    res.status(404).json({ error: 'Not found' })
-    return
+router.get('/:id', requireAuth, asyncHandler(async (req, res) => {
+  const requesterId = getUserId(req)
+  const userId = parsePositiveInt(req.params.id, 'user id')
+  if (requesterId !== userId) {
+    throw new AppError(403, 'Forbidden')
   }
-  // ANTI-PATTERN: password field included in response
-  res.json(user)
-})
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: publicUserSelect })
+  if (!user) {
+    throw new AppError(404, 'User not found')
+  }
+
+  res.json(toPublicUser(user))
+}))
 
 export default router

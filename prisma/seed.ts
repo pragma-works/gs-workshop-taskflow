@@ -49,6 +49,56 @@ async function main() {
     data: { title: 'Landing page redesign',  position: 0, listId: done.id,        assigneeId: bob.id },
   })
 
+  await prisma.activityEvent.createMany({
+    data: [
+      {
+        boardId: board.id,
+        actorId: alice.id,
+        actorName: 'Alice',
+        eventType: 'card_created',
+        cardId: card1.id,
+        cardTitle: card1.title,
+        toListName: backlog.name,
+      },
+      {
+        boardId: board.id,
+        actorId: bob.id,
+        actorName: 'Bob',
+        eventType: 'card_created',
+        cardId: card2.id,
+        cardTitle: card2.title,
+        toListName: backlog.name,
+      },
+      {
+        boardId: board.id,
+        actorId: carol.id,
+        actorName: 'Carol',
+        eventType: 'card_created',
+        cardId: card3.id,
+        cardTitle: card3.title,
+        toListName: inProgress.name,
+      },
+      {
+        boardId: board.id,
+        actorId: alice.id,
+        actorName: 'Alice',
+        eventType: 'card_created',
+        cardId: card4.id,
+        cardTitle: card4.title,
+        toListName: inProgress.name,
+      },
+      {
+        boardId: board.id,
+        actorId: bob.id,
+        actorName: 'Bob',
+        eventType: 'card_created',
+        cardId: card5.id,
+        cardTitle: card5.title,
+        toListName: done.name,
+      },
+    ],
+  })
+
   // Card labels
   await prisma.cardLabel.createMany({
     data: [
@@ -73,6 +123,41 @@ async function main() {
       { content: 'Add avatar upload here',         cardId: card4.id, userId: bob.id },
       { content: 'Mobile viewport looks off',      cardId: card4.id, userId: carol.id },
       { content: 'Shipped to prod Friday',         cardId: card5.id, userId: alice.id },
+    ],
+  })
+
+  await prisma.activityEvent.createMany({
+    data: [
+      {
+        boardId: board.id,
+        actorId: alice.id,
+        actorName: 'Alice',
+        eventType: 'card_commented',
+        cardId: card1.id,
+        cardTitle: card1.title,
+        toListName: backlog.name,
+        commentPreview: 'Should we use OAuth?',
+      },
+      {
+        boardId: board.id,
+        actorId: bob.id,
+        actorName: 'Bob',
+        eventType: 'card_commented',
+        cardId: card3.id,
+        cardTitle: card3.title,
+        toListName: inProgress.name,
+        commentPreview: 'Confirmed — affects prod',
+      },
+      {
+        boardId: board.id,
+        actorId: alice.id,
+        actorName: 'Alice',
+        eventType: 'card_commented',
+        cardId: card5.id,
+        cardTitle: card5.title,
+        toListName: done.name,
+        commentPreview: 'Shipped to prod Friday',
+      },
     ],
   })
 
