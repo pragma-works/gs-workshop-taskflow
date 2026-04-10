@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "530756a",
+    "commit": "0f09e85",
     "branch": "participant/P029",
-    "timestamp": "2026-04-10T21:13:45.100Z",
+    "timestamp": "2026-04-10T21:18:02.440Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -23,10 +23,10 @@
     "verifiable": {
       "score": 0,
       "max": 2,
-      "details": "Tests: 0 passed, 0 failed | Coverage: 0.0%",
+      "details": "Tests: 0 passed, 0 failed | Coverage: not measured",
       "testsPassed": 0,
       "testsFailed": 0,
-      "coveragePct": 0
+      "coveragePct": null
     },
     "defended": {
       "score": 1,
@@ -36,7 +36,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 32/32 (100%) | Decision log: present",
+      "details": "Conventional commits: 34/34 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -73,9 +73,9 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 3.39,
+    "duplicatePct": 3,
     "branchCount": 50,
-    "testCoverage": 0,
+    "testCoverage": null,
     "testCount": 0,
     "depCount": 4
   }
