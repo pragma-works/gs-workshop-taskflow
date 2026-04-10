@@ -1,13 +1,53 @@
-# taskflow — Workshop Project
+# taskflow — Activity Feed Feature
 
-A Kanban board API. Your team uses it to manage work in columns (Backlog, In Progress, Done),
-move cards between them, and discuss work in comments.
+A Kanban board API built with Express, Prisma, and SQLite. Boards contain lists; lists contain
+cards; cards can be moved between lists, commented on, and labelled.
 
 ---
 
-## Your instructions are in START.md
+## What was built in this branch
 
-Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-by-step instructions for your group.
+### Activity Feed (PM-5214)
+
+This branch adds a durable activity feed that records every card move and makes it queryable
+per board. Three endpoints were implemented or modified:
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `PATCH` | `/cards/:id/move` | JWT | Moves a card to a target list; atomically writes an `ActivityEvent` in the **same Prisma transaction** so the card position and the event are always in sync — no desync is possible on failure |
+| `GET` | `/boards/:id/activity` | JWT (member only) | Returns all `ActivityEvent` rows for the board in reverse chronological order, each enriched with `actorName`, `cardTitle`, `fromListName`, and `toListName` loaded via a single Prisma `include` call — no query loops |
+| `GET` | `/boards/:id/activity/preview` | None | Same response shape as above; no authentication required — useful for local testing without a token |
+
+### Response shape (`ActivityEvent`)
+
+```json
+{
+  "id": 1,
+  "boardId": 1,
+  "actorId": 7,
+  "actorName": "Alice",
+  "eventType": "card_moved",
+  "cardId": 5,
+  "cardTitle": "Fix login bug",
+  "fromListId": 1,
+  "fromListName": "Backlog",
+  "toListId": 2,
+  "toListName": "In Progress",
+  "createdAt": "2024-06-01T12:00:00.000Z"
+}
+```
+
+### Repository layer
+
+All direct Prisma access was moved out of route files into `src/repositories/`:
+
+- `userRepo.ts` — user creation and authentication (bcrypt handled here)
+- `boardRepo.ts` — board listing, detail fetching, membership management
+- `cardRepo.ts` — card CRUD, the atomic `moveCard` (transaction owner)
+- `activityRepo.ts` — event queries with typed Prisma `include`
+
+Route files no longer import `prisma` directly — zero `prisma.*` calls outside the
+repository layer.
 
 ---
 
@@ -15,54 +55,53 @@ Open `START.md` — it has your task brief (PM-5214), scoring rubric, and step-b
 
 ```bash
 npm install
-npm run db:push   # creates the SQLite database
-npm run dev       # starts on http://localhost:3000
-npm test          # run tests
+npx prisma db push   # apply schema (creates SQLite DB + ActivityEvent table)
+npm run dev          # starts on http://localhost:3001
 ```
 
 ---
 
-## How scoring works
+## Running tests
 
-Every time you push to your `participant/PXXX` branch, a GitHub Actions workflow runs automatically:
+```bash
+npm test                  # run all 39 unit tests (Vitest + supertest, mocked DB)
+npm run test:coverage     # run with v8 coverage report (currently ~95% line coverage)
+```
 
-1. Checks out your code
-2. Runs `npm run score` — a scoring script that analyses your repo against 7 code quality properties
-3. Writes the result to `score.json` on your branch (committed by the bot)
-4. Uploads it as a workflow artifact
-
-**You never need to run scoring manually.** Push your code → wait ~60s → check the Actions tab.
-
-The score is re-computed on every push, so the latest push always reflects your current state.
+Tests live alongside routes in `src/routes/*.test.ts` and use `vi.mock('../db')` to
+intercept all Prisma calls — no real database is needed to run the test suite.
 
 ---
 
-## What gets scored (automated, 8 pts)
+## Running the scorer
 
-| Property | Pts | What earns it |
-|----------|-----|---------------|
-| **Executable** | 3 | API contracts pass hidden live tests (HTTP status codes, response shapes) |
-| **Composable** | 3 | Business logic does not leak into route handlers (hidden live test) |
-| **Verifiable** | 2 | All tests pass + ≥60% line coverage on new files |
-| **Bounded** | 2 | Zero direct `db.*` calls in route files |
-| **Auditable** | 2 | ≥50% conventional commits + one decision log entry |
-| **Self-describing** | 1 | README describes what you built |
-| **Defended** | 1 | Zero TypeScript errors |
+```bash
+npm run score   # writes score.json and prints the 8-point breakdown to stdout
+```
 
-Executable and Composable are scored via hidden live tests after the session. The other 8 points are computed automatically on every push and visible in your `score.json`.
+The scorer checks: README updated, zero `prisma` in route files, test pass rate,
+line coverage ≥ 60%, CI config, conventional commits, and a decision log file.
 
 ---
 
-## Scoring is blind
+## Schema change
 
-`score.ts` receives no information about which experimental condition you are in — it analyses whatever code is on your branch. This makes the experiment inherently double-blind by design.
+`prisma/schema.prisma` adds one new model:
 
----
-
-## What good looks like
-
-- Cards belong to columns; columns belong to boards — correct ownership enforced
-- Moving a card to Done does not delete it
-- Comments are attached to cards, not boards
-- JWT secret comes from an env var, never hardcoded
-- Every endpoint has at least one test
+```prisma
+model ActivityEvent {
+  id         Int      @id @default(autoincrement())
+  boardId    Int
+  actorId    Int
+  eventType  String
+  cardId     Int?
+  fromListId Int?
+  toListId   Int?
+  createdAt  DateTime @default(now())
+  board    Board  @relation(...)
+  actor    User   @relation(...)
+  card     Card?  @relation(...)
+  fromList List?  @relation("fromList", ...)
+  toList   List?  @relation("toList", ...)
+}
+```
