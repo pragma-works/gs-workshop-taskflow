@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import prisma from '../db'
 import { verifyToken } from '../auth'
 
@@ -39,7 +39,7 @@ function queryEvents(boardId: number) {
 }
 
 // GET /boards/:id/activity — auth required
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   let userId: number
   try {
     userId = verifyToken(req)
@@ -48,23 +48,31 @@ router.get('/', async (req: Request, res: Response) => {
     return
   }
 
-  const boardId = parseInt(req.params.id)
+  try {
+    const boardId = parseInt(req.params.id)
 
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
-  })
-  if (!membership) {
-    res.status(403).json({ error: 'Not a board member' })
-    return
+    const membership = await prisma.boardMember.findUnique({
+      where: { userId_boardId: { userId, boardId } },
+    })
+    if (!membership) {
+      res.status(403).json({ error: 'Not a board member' })
+      return
+    }
+
+    res.json(formatEvents(await queryEvents(boardId)))
+  } catch (err) {
+    next(err)
   }
-
-  res.json(formatEvents(await queryEvents(boardId)))
 })
 
 // GET /boards/:id/activity/preview — no auth, for testing
-router.get('/preview', async (req: Request, res: Response) => {
-  const boardId = parseInt(req.params.id)
-  res.json(formatEvents(await queryEvents(boardId)))
+router.get('/preview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const boardId = parseInt(req.params.id)
+    res.json(formatEvents(await queryEvents(boardId)))
+  } catch (err) {
+    next(err)
+  }
 })
 
 export default router
