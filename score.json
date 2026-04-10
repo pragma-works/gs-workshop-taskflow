@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "2ebea71",
+    "commit": "9b0aa4f",
     "branch": "participant/P030",
-    "timestamp": "2026-04-10T22:09:33.626Z",
+    "timestamp": "2026-04-10T22:13:08.742Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -37,11 +37,11 @@
       "details": "Structural guard present: CI workflow"
     },
     "auditable": {
-      "score": 1,
+      "score": 2,
       "max": 2,
-      "details": "Conventional commits: 30/31 (97%) | Decision log: missing — add a doc recording one design choice you made and why",
-      "conventionalPct": 0.967741935483871,
-      "hasDecisionLog": false
+      "details": "Conventional commits: 32/33 (97%) | Decision log: present",
+      "conventionalPct": 0.9696969696969697,
+      "hasDecisionLog": true
     },
     "composable": {
       "score": null,
@@ -54,7 +54,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 4,
+      "score": 5,
       "max": 8
     },
     "total_with_live_tests": {
