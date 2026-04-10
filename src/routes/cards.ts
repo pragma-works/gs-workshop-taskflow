@@ -4,15 +4,24 @@ import { verifyToken } from '../lib/auth'
 import { asyncHandler } from '../lib/asyncHandler'
 import { HttpError, getErrorMessage } from '../lib/errors'
 import {
+  parseIdParam,
+  parseNonNegativeInt,
+  parseOptionalPositiveInt,
+  parseOptionalString,
+  parsePositiveInt,
+  parseRequiredString,
+  readObjectBody,
+} from '../lib/validation'
+import {
   createCardAtEnd,
   createComment,
   deleteCardById,
   findCardForMove,
   findCardWithDetails,
   findListById,
-  isBoardMember,
   moveCardWithActivity,
-} from '../repositories/taskflowRepository'
+} from '../repositories/cardsRepository'
+import { isBoardMember } from '../repositories/boardsRepository'
 
 const router = Router()
 
@@ -20,7 +29,8 @@ router.get(
   '/:id',
   asyncHandler(async (req, res) => {
     verifyToken(req)
-    const card = await findCardWithDetails(Number.parseInt(req.params.id, 10))
+    const cardId = parseIdParam(req.params.id, 'card id')
+    const card = await findCardWithDetails(cardId)
     if (!card) {
       throw new HttpError(404, 'Not found')
     }
@@ -33,7 +43,11 @@ router.post(
   '/',
   asyncHandler(async (req, res) => {
     verifyToken(req)
-    const { title, description, listId, assigneeId } = req.body
+    const body = readObjectBody(req.body)
+    const title = parseRequiredString(body.title, 'title')
+    const description = parseOptionalString(body.description, 'description')
+    const listId = parsePositiveInt(body.listId, 'listId')
+    const assigneeId = parseOptionalPositiveInt(body.assigneeId, 'assigneeId')
     const card = await createCardAtEnd({ title, description, listId, assigneeId })
     res.status(201).json(card)
   }),
@@ -43,8 +57,10 @@ router.patch(
   '/:id/move',
   asyncHandler(async (req, res) => {
     const userId = verifyToken(req)
-    const cardId = Number.parseInt(req.params.id, 10)
-    const { targetListId, position } = req.body
+    const cardId = parseIdParam(req.params.id, 'card id')
+    const body = readObjectBody(req.body)
+    const targetListId = parsePositiveInt(body.targetListId, 'targetListId')
+    const position = parseNonNegativeInt(body.position, 'position')
 
     const card = await findCardForMove(cardId)
     if (!card) {
@@ -84,8 +100,9 @@ router.post(
   '/:id/comments',
   asyncHandler(async (req, res) => {
     const userId = verifyToken(req)
-    const { content } = req.body
-    const cardId = Number.parseInt(req.params.id, 10)
+    const body = readObjectBody(req.body)
+    const content = parseRequiredString(body.content, 'content')
+    const cardId = parseIdParam(req.params.id, 'card id')
     const comment = await createComment({ content, cardId, userId })
     res.status(201).json(comment)
   }),
@@ -95,7 +112,8 @@ router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     verifyToken(req)
-    await deleteCardById(Number.parseInt(req.params.id, 10))
+    const cardId = parseIdParam(req.params.id, 'card id')
+    await deleteCardById(cardId)
     res.json({ ok: true })
   }),
 )

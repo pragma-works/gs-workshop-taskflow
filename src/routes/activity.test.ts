@@ -72,6 +72,22 @@ describe('taskflow routes', () => {
     expect(response.body).toEqual({ error: 'Unauthorized' })
   })
 
+  it('returns 401 when an invalid bearer token is used', async () => {
+    const response = await request(app)
+      .get('/boards')
+      .set('Authorization', 'Bearer definitely-not-a-valid-jwt')
+
+    expect(response.status).toBe(401)
+    expect(response.body).toEqual({ error: 'Unauthorized' })
+  })
+
+  it('returns 400 when a board activity preview request uses an invalid board id', async () => {
+    const response = await request(app).get('/boards/not-a-number/activity/preview')
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid board id' })
+  })
+
   it('records a card move and its activity event atomically', async () => {
     const response = await request(app)
       .patch(`/cards/${seed.firstCardId}/move`)
@@ -151,14 +167,14 @@ describe('taskflow routes', () => {
     expect(events).toHaveLength(0)
   })
 
-  it('returns a JSON 500 response when a move payload reaches the transaction with invalid data', async () => {
+  it('returns 400 when a move payload contains invalid values', async () => {
     const response = await request(app)
       .patch(`/cards/${seed.firstCardId}/move`)
       .set('Authorization', seed.ownerAuthHeader)
       .send({ targetListId: seed.doingListId, position: null })
 
-    expect(response.status).toBe(500)
-    expect(response.body.error).toBe('Move failed')
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid position' })
   })
 
   it('returns public user data when a user registers', async () => {
@@ -179,6 +195,16 @@ describe('taskflow routes', () => {
     expect(storedUser?.password).not.toBe('new-password')
   })
 
+  it('returns 400 when a user registration payload is incomplete', async () => {
+    const response = await request(app).post('/users/register').send({
+      email: 'missing-name@example.com',
+      password: 'new-password',
+    })
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid name' })
+  })
+
   it('issues a JWT when login credentials are valid', async () => {
     const response = await request(app).post('/users/login').send({
       email: 'ava@example.com',
@@ -187,6 +213,13 @@ describe('taskflow routes', () => {
 
     expect(response.status).toBe(200)
     expect(typeof response.body.token).toBe('string')
+  })
+
+  it('returns 400 when a user id is invalid', async () => {
+    const response = await request(app).get('/users/not-a-number')
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid user id' })
   })
 
   it('returns public user data when a user is requested by id', async () => {
@@ -299,6 +332,16 @@ describe('taskflow routes', () => {
     expect(response.body).toEqual({ error: 'Only board owners can add members' })
   })
 
+  it('returns 400 when a board member payload is invalid', async () => {
+    const response = await request(app)
+      .post(`/boards/${seed.boardId}/members`)
+      .set('Authorization', seed.ownerAuthHeader)
+      .send({ memberId: 'not-a-number' })
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid memberId' })
+  })
+
   it('returns card details with comments and labels for authenticated users', async () => {
     const response = await request(app)
       .get(`/cards/${seed.firstCardId}`)
@@ -311,6 +354,15 @@ describe('taskflow routes', () => {
     })
     expect(response.body.comments[0]).toMatchObject({ content: 'Initial comment' })
     expect(response.body.labels[0]).toMatchObject({ name: 'Backend' })
+  })
+
+  it('returns 400 when a card id is invalid', async () => {
+    const response = await request(app)
+      .get('/cards/not-a-number')
+      .set('Authorization', seed.ownerAuthHeader)
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid card id' })
   })
 
   it('creates a new card at the end of the target list', async () => {
@@ -326,6 +378,19 @@ describe('taskflow routes', () => {
 
     expect(response.status).toBe(201)
     expect(response.body.position).toBe(2)
+  })
+
+  it('returns 400 when a card creation payload is invalid', async () => {
+    const response = await request(app)
+      .post('/cards')
+      .set('Authorization', seed.ownerAuthHeader)
+      .send({
+        title: '',
+        listId: seed.backlogListId,
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'Invalid title' })
   })
 
   it('creates comments on cards for authenticated users', async () => {

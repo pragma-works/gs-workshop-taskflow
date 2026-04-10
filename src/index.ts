@@ -1,5 +1,8 @@
+import type { Server } from 'node:http'
+
 import express, { type NextFunction, type Request, type Response } from 'express'
 
+import { connectDatabase, registerDatabaseShutdownHooks } from './db'
 import { HttpError, getErrorMessage } from './lib/errors'
 import activityRouter from './routes/activity'
 import boardsRouter from './routes/boards'
@@ -32,8 +35,31 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 const PORT = process.env.PORT || 3001
+
+function resolvePort(rawPort: string | number | undefined): number {
+  const parsedPort = typeof rawPort === 'number'
+    ? rawPort
+    : Number.parseInt(String(rawPort ?? ''), 10)
+
+  return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : 3001
+}
+
+export async function startServer(): Promise<Server> {
+  await connectDatabase()
+  registerDatabaseShutdownHooks()
+
+  const port = resolvePort(PORT)
+
+  return new Promise((resolve) => {
+    const server = app.listen(port, () => {
+      console.log(`taskflow running on :${port}`)
+      resolve(server)
+    })
+  })
+}
+
 if (require.main === module && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => console.log(`taskflow running on :${PORT}`))
+  void startServer()
 }
 
 export default app

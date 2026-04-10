@@ -3,7 +3,9 @@ import { Router } from 'express'
 import { verifyToken } from '../lib/auth'
 import { asyncHandler } from '../lib/asyncHandler'
 import { HttpError } from '../lib/errors'
-import { isBoardMember, listBoardActivity } from '../repositories/taskflowRepository'
+import { parseIdParam } from '../lib/validation'
+import { listBoardActivity } from '../repositories/activityRepository'
+import { isBoardMember } from '../repositories/boardsRepository'
 
 const router = Router()
 
@@ -11,7 +13,7 @@ router.get(
   '/:id/activity',
   asyncHandler(async (req, res) => {
     const userId = verifyToken(req)
-    const boardId = Number.parseInt(req.params.id, 10)
+    const boardId = parseIdParam(req.params.id, 'board id')
 
     if (!(await isBoardMember(userId, boardId))) {
       throw new HttpError(403, 'Not a board member')
@@ -24,7 +26,7 @@ router.get(
 router.get(
   '/:id/activity/preview',
   asyncHandler(async (req, res) => {
-    const boardId = Number.parseInt(req.params.id, 10)
+    const boardId = parseIdParam(req.params.id, 'board id')
     res.json(await listBoardActivity(boardId))
   }),
 )
