@@ -16,13 +16,17 @@ function verifyToken(req: Request): number {
   return payload.userId
 }
 
+function toPublicUser(user: { password: string } & Record<string, unknown>) {
+  const { password: _password, ...publicUser } = user
+  return publicUser
+}
+
 // POST /users/register
 router.post('/register', async (req: Request, res: Response) => {
   const { email, password, name } = req.body
   const hashed = await bcrypt.hash(password, 10)
   const user = await prisma.user.create({ data: { email, password: hashed, name } })
-  const { password: _password, ...publicUser } = user
-  res.json(publicUser)
+  res.json(toPublicUser(user))
 })
 
 // POST /users/login
@@ -49,8 +53,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     res.status(404).json({ error: 'Not found' })
     return
   }
-  const { password: _password, ...publicUser } = user
-  res.json(publicUser)
+  res.json(toPublicUser(user))
 })
 
 export default router
