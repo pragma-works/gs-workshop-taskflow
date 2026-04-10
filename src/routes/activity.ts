@@ -1,10 +1,13 @@
 import { Router, Request, Response } from 'express'
 import * as jwt from 'jsonwebtoken'
-import prisma from '../db'
+import {
+  checkMembership,
+  findBoardEvents,
+  ActivityEventWithRelations,
+} from '../repositories/activityRepo'
 
 const router = Router()
 
-// ANTI-PATTERN: copy-pasted from boards.ts / cards.ts / users.ts (existing codebase pattern)
 function verifyToken(req: Request): number {
   const header = req.headers.authorization
   if (!header) throw new Error('No auth header')
@@ -13,19 +16,7 @@ function verifyToken(req: Request): number {
   return payload.userId
 }
 
-// Shared Prisma include — loads all relations needed for the response shape in one round-trip
-const activityInclude = {
-  actor:    { select: { name: true } },
-  card:     { select: { title: true } },
-  fromList: { select: { name: true } },
-  toList:   { select: { name: true } },
-} as const
-
-type EventWithRelations = Awaited<
-  ReturnType<typeof prisma.activityEvent.findMany<{ include: typeof activityInclude }>>
->[number]
-
-function formatEvents(events: EventWithRelations[]) {
+function formatEvents(events: ActivityEventWithRelations[]) {
   return events.map(e => ({
     id:           e.id,
     boardId:      e.boardId,
@@ -55,21 +46,14 @@ router.get('/:id/activity', async (req: Request, res: Response) => {
   const boardId = parseInt(req.params.id)
 
   // Query 1: membership check
-  const membership = await prisma.boardMember.findUnique({
-    where: { userId_boardId: { userId, boardId } },
-  })
+  const membership = await checkMembership(userId, boardId)
   if (!membership) {
     res.status(403).json({ error: 'Not a board member' })
     return
   }
 
   // Query 2: all events with relations in a single round-trip (no loops)
-  const events = await prisma.activityEvent.findMany({
-    where:   { boardId },
-    orderBy: { createdAt: 'desc' },
-    include: activityInclude,
-  })
-
+  const events = await findBoardEvents(boardId)
   res.json(formatEvents(events))
 })
 
@@ -78,12 +62,7 @@ router.get('/:id/activity/preview', async (req: Request, res: Response) => {
   const boardId = parseInt(req.params.id)
 
   // Single query: events with all relations in one round-trip (no loops)
-  const events = await prisma.activityEvent.findMany({
-    where:   { boardId },
-    orderBy: { createdAt: 'desc' },
-    include: activityInclude,
-  })
-
+  const events = await findBoardEvents(boardId)
   res.json(formatEvents(events))
 })
 
