@@ -1,9 +1,9 @@
 {
   "meta": {
     "repo": "taskflow",
-    "commit": "cbf9a74",
+    "commit": "ca66279",
     "branch": "participant/P025",
-    "timestamp": "2026-04-10T21:26:29.273Z",
+    "timestamp": "2026-04-10T21:33:02.824Z",
     "scorer_version": "1.0.0"
   },
   "gs_scores": {
@@ -13,18 +13,20 @@
       "details": "README updated by participant (1751 chars)"
     },
     "bounded": {
-      "score": 2,
+      "score": 1,
       "max": 2,
-      "details": "No direct DB calls in route/service files",
-      "violations": []
+      "details": "1 direct DB call(s) outside repository layer",
+      "violations": [
+        "src/__tests__/globalSetup.ts"
+      ]
     },
     "verifiable": {
-      "score": 0,
+      "score": 2,
       "max": 2,
-      "details": "Tests: 19 passed, 27 failed | Coverage: not measured",
-      "testsPassed": 19,
-      "testsFailed": 27,
-      "coveragePct": null
+      "details": "Tests: 46 passed, 0 failed | Coverage: 100.0%",
+      "testsPassed": 46,
+      "testsFailed": 0,
+      "coveragePct": 100
     },
     "defended": {
       "score": 1,
@@ -34,7 +36,7 @@
     "auditable": {
       "score": 2,
       "max": 2,
-      "details": "Conventional commits: 41/41 (100%) | Decision log: present",
+      "details": "Conventional commits: 43/43 (100%) | Decision log: present",
       "conventionalPct": 1,
       "hasDecisionLog": true
     },
@@ -49,7 +51,7 @@
       "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
     },
     "total_automated": {
-      "score": 6,
+      "score": 7,
       "max": 8
     },
     "total_with_live_tests": {
@@ -71,9 +73,9 @@
     "eslintWarnings": 0,
     "auditCritical": 0,
     "auditHigh": 1,
-    "duplicatePct": 3.34,
+    "duplicatePct": 3.31,
     "branchCount": 13,
-    "testCoverage": null,
+    "testCoverage": 100,
     "testCount": 46,
     "depCount": 4
   }
