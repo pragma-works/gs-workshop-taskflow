@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:mutation": "stryker run",
     "db:push": "prisma db push",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "score": "tsx scripts/score.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
