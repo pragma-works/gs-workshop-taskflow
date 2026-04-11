@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "repo": "taskflow",
+    "commit": "9b63a45",
+    "branch": "participant/P008",
+    "timestamp": "2026-04-11T11:59:12.264Z",
+    "scorer_version": "1.0.0"
+  },
+  "gs_scores": {
+    "self_describing": {
+      "score": 1,
+      "max": 1,
+      "details": "README updated by participant (3675 chars)"
+    },
+    "bounded": {
+      "score": 0,
+      "max": 2,
+      "details": "17 direct DB calls found — repository layer missing",
+      "violations": [
+        "src/errors.ts",
+        "src/test/integration-helpers.ts"
+      ]
+    },
+    "verifiable": {
+      "score": 0,
+      "max": 2,
+      "details": "Tests: 19 passed, 2 failed | Coverage: not measured",
+      "testsPassed": 19,
+      "testsFailed": 2,
+      "coveragePct": null
+    },
+    "defended": {
+      "score": 1,
+      "max": 1,
+      "details": "Structural guard present: CI workflow"
+    },
+    "auditable": {
+      "score": 2,
+      "max": 2,
+      "details": "Conventional commits: 20/22 (91%) | Decision log: present",
+      "conventionalPct": 0.9090909090909091,
+      "hasDecisionLog": true
+    },
+    "composable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (clean architecture, DI, no unexpected coupling)"
+    },
+    "executable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
+    },
+    "total_automated": {
+      "score": 4,
+      "max": 8
+    },
+    "total_with_live_tests": {
+      "score": null,
+      "max": 14,
+      "details": "Available after hidden live tests (Composable + Executable)"
+    }
+  },
+  "intake": {
+    "status": "missing",
+    "consented": false,
+    "q1": null,
+    "q2": null,
+    "q3": null
+  },
+  "external_metrics": {
+    "tscErrors": 0,
+    "eslintErrors": 0,
+    "eslintWarnings": 0,
+    "auditCritical": 0,
+    "auditHigh": 0,
+    "duplicatePct": 6.13,
+    "branchCount": 32,
+    "testCoverage": null,
+    "testCount": 21,
+    "depCount": 5
+  }
+}
