@@ -33,7 +33,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add score.json
           git diff --cached --quiet || git commit -m "chore(score): update score.json [skip ci]"
-          git pull --rebase && git push
+          git push
 
       - name: Upload score artifact
         uses: actions/upload-artifact@v4
@@ -43,5 +43,3 @@ jobs:
 
       - name: Print summary
         run: cat score.json
-
-
