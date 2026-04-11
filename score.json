@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "repo": "taskflow",
+    "commit": "7dfe851",
+    "branch": "participant/P014",
+    "timestamp": "2026-04-11T11:59:28.688Z",
+    "scorer_version": "1.0.0"
+  },
+  "gs_scores": {
+    "self_describing": {
+      "score": 1,
+      "max": 1,
+      "details": "README updated by participant (3675 chars)"
+    },
+    "bounded": {
+      "score": 0,
+      "max": 2,
+      "details": "33 direct DB calls found — repository layer missing",
+      "violations": [
+        "src/routes/activity.ts",
+        "src/routes/boards.ts",
+        "src/routes/cards.ts",
+        "src/routes/users.ts"
+      ]
+    },
+    "verifiable": {
+      "score": 1,
+      "max": 2,
+      "details": "Tests: 15 passed, 0 failed | Coverage: not measured",
+      "testsPassed": 15,
+      "testsFailed": 0,
+      "coveragePct": null
+    },
+    "defended": {
+      "score": 1,
+      "max": 1,
+      "details": "Structural guard present: CI workflow"
+    },
+    "auditable": {
+      "score": 1,
+      "max": 2,
+      "details": "Conventional commits: 9/10 (90%) | Decision log: missing — add a doc recording one design choice you made and why",
+      "conventionalPct": 0.9,
+      "hasDecisionLog": false
+    },
+    "composable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (clean architecture, DI, no unexpected coupling)"
+    },
+    "executable": {
+      "score": null,
+      "max": 3,
+      "details": "Pending — scored via hidden live test after submission (server starts, API behavioral contracts pass)"
+    },
+    "total_automated": {
+      "score": 4,
+      "max": 8
+    },
+    "total_with_live_tests": {
+      "score": null,
+      "max": 14,
+      "details": "Available after hidden live tests (Composable + Executable)"
+    }
+  },
+  "intake": {
+    "status": "missing",
+    "consented": false,
+    "q1": null,
+    "q2": null,
+    "q3": null
+  },
+  "external_metrics": {
+    "tscErrors": 0,
+    "eslintErrors": 0,
+    "eslintWarnings": 0,
+    "auditCritical": 0,
+    "auditHigh": 0,
+    "duplicatePct": 5.44,
+    "branchCount": 25,
+    "testCoverage": null,
+    "testCount": 15,
+    "depCount": 4
+  }
+}
