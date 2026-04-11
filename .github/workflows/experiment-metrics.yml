@@ -1,6 +1,7 @@
 name: Experiment Metrics
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'participant/**'
