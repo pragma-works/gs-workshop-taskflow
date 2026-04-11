@@ -25,7 +25,7 @@ jobs:
       - run: npm install
 
       - name: Run GS scoring
-        run: npm run score
+        run: npx --yes tsx scripts/score.ts
 
       - name: Commit score.json
         run: |
