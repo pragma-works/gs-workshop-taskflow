@@ -1,5 +1,4 @@
 name: Experiment Metrics
-
 on:
   workflow_dispatch:
   push:
@@ -9,9 +8,11 @@ on:
 jobs:
   score:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./dev.db
+      JWT_SECRET: test-secret-for-ci
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,295 +22,24 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      - name: TypeScript type-check
-        run: npx tsc --noEmit 2>&1 | tee type-check.log || true
+      - name: Run GS scoring
+        run: npm run score
 
-      - name: Structural metrics
+      - name: Commit score.json
         run: |
-          echo "=== STRUCTURAL METRICS ==="
-          echo "Total .ts files: $(find src -name '*.ts' | wc -l)"
-          echo "Total test files: $(find src \( -name '*.test.ts' -o -name '*.spec.ts' \) | wc -l)"
-          echo "Total lines (src): $(find src -name '*.ts' ! -name '*.test.*' ! -name '*.spec.*' -exec cat {} + | wc -l)"
-          echo "Total commits: $(git rev-list --count HEAD)"
-          echo "Directories under src: $(find src -type d | wc -l)"
-          echo "Files with 'interface': $(grep -rl 'interface ' src --include='*.ts' | wc -l)"
-          echo "console.log count: $(grep -rn 'console\.log' src --include='*.ts' | wc -l)"
-          echo "Error classes: $(grep -rn 'extends Error' src --include='*.ts' | wc -l)"
-          echo "Direct Prisma calls (bounded check): $(grep -rn 'prisma\.' src --include='*.ts' | grep -v -iE '(repositor|prisma\.ts|prisma-client)' | wc -l)"
-
-      - name: Commit discipline
-        run: |
-          echo "=== COMMIT HISTORY ==="
-          git log --oneline --format="%H %s" | head -50
-          echo "Conventional commits: $(git log --oneline | grep -cE '^[a-f0-9]+ (feat|fix|refactor|test|chore|docs)\(' || echo 0)"
-          echo "Total commits: $(git rev-list --count HEAD)"
-
-      - name: Install Hurl
-        run: |
-          HURL_VERSION=7.0.0
-          curl -LsSo /tmp/hurl.deb \
-            "https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VERSION}/hurl_${HURL_VERSION}_amd64.deb"
-          sudo dpkg -i /tmp/hurl.deb
-
-      - name: Set up database and start dev server
-        run: |
-          cp .env.example .env 2>/dev/null || echo "DATABASE_URL=file:./dev.db" > .env
-          grep -q 'JWT_SECRET' .env || echo 'JWT_SECRET=argos-scoring-secret' >> .env
-          npx prisma db push --skip-generate 2>&1 || true
-          npx ts-node prisma/seed.ts 2>&1 || true
-          npx ts-node src/index.ts &
-          echo "Waiting for server on :3001..."
-          for i in $(seq 1 40); do
-            curl -s -o /dev/null http://localhost:3001 && echo "Server ready after ${i}x500ms" && break
-            sleep 0.5
-          done
-
-      - name: Write Hurl test files
-        run: |
-          mkdir -p /tmp/hurl
-
-          cat <<'HURL_EOF' > /tmp/hurl/executable.hurl
-          # Test 1 — POST /users/login returns {token} (non-empty string)
-          POST http://localhost:3001/users/login
-          Content-Type: application/json
-          {
-            "email": "alice@test.com",
-            "password": "password123"
-          }
-
-          HTTP 200
-          [Captures]
-          auth_token: jsonpath "$.token"
-          [Asserts]
-          jsonpath "$.token" isString
-          jsonpath "$.token" != ""
-
-
-          # Test 2 — POST /cards/1/move returns 2xx (authenticated)
-          PATCH http://localhost:3001/cards/1/move
-          Content-Type: application/json
-          Authorization: Bearer {{auth_token}}
-          {
-            "targetListId": 2,
-            "position": 0
-          }
-
-          HTTP *
-          [Asserts]
-          status >= 200
-          status < 300
-
-
-          # Test 3 — GET /boards/1/activity/preview returns an array (no auth required)
-          GET http://localhost:3001/boards/1/activity/preview
-
-          HTTP 200
-          [Asserts]
-          jsonpath "$" isCollection
-          HURL_EOF
-
-          cat <<'HURL_EOF' > /tmp/hurl/composable.hurl
-          # Setup — login as alice
-          POST http://localhost:3001/users/login
-          Content-Type: application/json
-          {
-            "email": "alice@test.com",
-            "password": "password123"
-          }
-
-          HTTP 200
-          [Captures]
-          alice_token: jsonpath "$.token"
-
-
-          # Setup — move a card to generate an activity event
-          PATCH http://localhost:3001/cards/1/move
-          Content-Type: application/json
-          Authorization: Bearer {{alice_token}}
-          {
-            "targetListId": 2,
-            "position": 0
-          }
-
-          HTTP *
-          [Asserts]
-          status >= 200
-          status < 300
-
-
-          # Test 1 — GET /boards/1/activity/preview events have correct shape
-          # Expected fields per event: id, boardId, actorName, eventType, cardTitle, timestamp
-          GET http://localhost:3001/boards/1/activity/preview
-
-          HTTP 200
-          [Asserts]
-          jsonpath "$" isCollection
-          jsonpath "$[0].id" isInteger
-          jsonpath "$[0].boardId" isInteger
-          jsonpath "$[0].actorName" isString
-          jsonpath "$[0].eventType" isString
-          jsonpath "$[0].cardTitle" isString
-          jsonpath "$[0].timestamp" isString
-
-
-          # Test 2 — GET /boards/1/activity without Authorization returns 401
-          GET http://localhost:3001/boards/1/activity
-
-          HTTP *
-          [Asserts]
-          status == 401
-
-
-          # Setup — move again to guarantee a fresh card_moved event for atomicity check
-          PATCH http://localhost:3001/cards/1/move
-          Content-Type: application/json
-          Authorization: Bearer {{alice_token}}
-          {
-            "targetListId": 3,
-            "position": 0
-          }
-
-          HTTP *
-          [Asserts]
-          status >= 200
-          status < 300
-
-
-          # Test 3 — GET /boards/1/activity/preview includes at least one card_moved event
-          GET http://localhost:3001/boards/1/activity/preview
-
-          HTTP 200
-          [Asserts]
-          jsonpath "$[*].eventType" includes "card_moved"
-          HURL_EOF
-
-      - name: Run Hurl live tests
-        run: |
-          mkdir -p /tmp/exec-report /tmp/comp-report
-          hurl --report-json /tmp/exec-report --test /tmp/hurl/executable.hurl 2>&1 || true
-          hurl --report-json /tmp/comp-report --test /tmp/hurl/composable.hurl 2>&1 || true
-
-      - name: Compute and write score.json
-        env:
-          GITHUB_SHA: ${{ github.sha }}
-        run: |
-          node <<'NODE_EOF'
-          const fs = require('fs');
-
-          function scoreHurl(reportDir) {
-            const reportPath = reportDir + '/report.json';
-            try {
-              const raw = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
-              const files = Array.isArray(raw) ? raw : [raw];
-              const entries = files.flatMap(f => f.entries ?? []);
-              const failed = entries.filter(e => (e.asserts ?? []).some(a => !a.success)).length;
-              return Math.max(0, 3 - failed);
-            } catch { return 0; }
-          }
-
-          // defended (0-2): TypeScript errors
-          let tscErrors = 0;
-          try {
-            const log = fs.readFileSync('type-check.log', 'utf-8');
-            tscErrors = (log.match(/error TS\d+/g) ?? []).length;
-          } catch {}
-          const tscScore = tscErrors === 0 ? 2 : tscErrors <= 3 ? 1 : 0;
-
-          // self_describing (0-2): taskflow has no ESLint — proxy on tsc strictness
-          // Award 2pt if src has interface/type usage showing intentional typing
-          let interfaceFiles = 0;
-          try {
-            const { execSync } = require('child_process');
-            const out = execSync(
-              'grep -rl "interface \\|type " src --include="*.ts" | wc -l',
-              { encoding: 'utf-8' }
-            ).trim();
-            interfaceFiles = parseInt(out, 10) || 0;
-          } catch {}
-          const eslintScore = interfaceFiles >= 3 ? 2 : interfaceFiles >= 1 ? 1 : 0;
-          const eslintErrors = 0;
-
-          // verifiable (0-2): taskflow has no vitest — proxy on test file count
-          let testFiles = 0;
-          try {
-            const { execSync } = require('child_process');
-            const out = execSync(
-              'find src -name "*.test.ts" -o -name "*.spec.ts" | wc -l',
-              { encoding: 'utf-8' }
-            ).trim();
-            testFiles = parseInt(out, 10) || 0;
-          } catch {}
-          const verifiableScore = testFiles >= 3 ? 2 : testFiles >= 1 ? 1 : 0;
-
-          // bounded (0-2): direct Prisma calls outside repository/service layer
-          let boundedViolations = 0;
-          try {
-            const { execSync } = require('child_process');
-            const out = execSync(
-              'grep -rn "prisma\\." src --include="*.ts"'
-              + ' | grep -v -iE "(repositor|service|prisma\\.ts|prisma-client\\.ts)" | wc -l',
-              { encoding: 'utf-8' }
-            ).trim();
-            boundedViolations = parseInt(out, 10) || 0;
-          } catch {}
-          const boundedScore = boundedViolations === 0 ? 2 : boundedViolations <= 3 ? 1 : 0;
-
-          const autoTotal = tscScore + eslintScore + verifiableScore + boundedScore;
-          const execScore = scoreHurl('/tmp/exec-report');
-          const compScore = scoreHurl('/tmp/comp-report');
-
-          const score = {
-            rubric: 'GS DX Experiment v1',
-            commit: process.env.GITHUB_SHA ?? 'unknown',
-            scored_at: new Date().toISOString(),
-            gs_scores: {
-              defended:        { score: tscScore,        max: 2, details: `${tscErrors} TypeScript error(s)` },
-              self_describing: { score: eslintScore,     max: 2, details: `${interfaceFiles} files with interface/type definitions` },
-              verifiable:      { score: verifiableScore, max: 2, details: `${testFiles} test file(s)` },
-              bounded:         { score: boundedScore,    max: 2, details: `${boundedViolations} direct Prisma call(s) outside data layer` },
-              total_automated: { score: autoTotal, max: 8 },
-              executable:      { score: execScore, max: 3, details: `Live Hurl: ${execScore}/3` },
-              composable:      { score: compScore, max: 3, details: `Live Hurl: ${compScore}/3` },
-              total_with_live_tests: {
-                score: autoTotal + execScore + compScore,
-                max: 14,
-                details: `Automated ${autoTotal}/8 + Live ${execScore + compScore}/6`,
-              },
-            },
-            raw_metrics: {
-              tscErrors,
-              eslintErrors,
-              testCoverage: 0,
-              boundedViolations,
-              interfaceFiles,
-              testFiles,
-            },
-          };
-
-          fs.writeFileSync('score.json', JSON.stringify(score, null, 2));
-          const t = score.gs_scores.total_with_live_tests;
-          console.log(`\n  Score: ${t.score}/${t.max}  (${autoTotal}/8 auto + ${execScore + compScore}/6 live)`);
-          NODE_EOF
-
-      - name: Commit score.json back to branch
-        run: |
-          git config user.email "scoring-bot@pragma-works.io"
-          git config user.name "Argos Scoring Bot"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add score.json
-          if ! git diff --staged --quiet; then
-            git commit -m "score: automated GS 14-pt [skip ci]"
-            git pull --rebase && git push
-          else
-            echo "score.json unchanged -- skipping commit"
-          fi
+          git diff --cached --quiet || git commit -m "chore(score): update score.json [skip ci]"
+          git push
 
-      - name: Upload artifacts
+      - name: Upload score artifact
         uses: actions/upload-artifact@v4
         with:
-          name: metrics-${{ github.sha }}
-          path: |
-            type-check.log
-            score.json
+          name: score
+          path: score.json
+
+      - name: Print summary
+        run: cat score.json
