@@ -21,7 +21,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: npm install
 
       - name: TypeScript type-check
         run: npx tsc --noEmit 2>&1 | tee type-check.log || true
@@ -300,7 +300,7 @@ jobs:
           git add score.json
           if ! git diff --staged --quiet; then
             git commit -m "score: automated GS 14-pt [skip ci]"
-            git push
+            git pull --rebase && git push
           else
             echo "score.json unchanged -- skipping commit"
           fi
